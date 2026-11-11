@@ -46,6 +46,17 @@ export async function createPhoto(p: NewPhoto): Promise<Photo> {
   return rows[0];
 }
 
+// Deletes the photo only if it belongs to this user, in one statement: no gap between
+// "is it yours?" and "delete it". Its comments go with it (on delete cascade).
+// Returns the deleted photo's storage key, or null when nothing was deleted.
+export async function deleteOwnPhoto(id: number, userId: number): Promise<string | null> {
+  const { rows } = await pool.query<{ storageKey: string }>(
+    `delete from photos where id = $1 and user_id = $2 returning storage_key as "storageKey"`,
+    [id, userId],
+  );
+  return rows[0]?.storageKey ?? null;
+}
+
 export async function setDescription(id: number, description: string): Promise<void> {
   await pool.query("update photos set description = $2 where id = $1", [id, description]);
 }
