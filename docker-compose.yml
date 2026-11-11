@@ -1,0 +1,21 @@
+services:
+  db:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: hylight
+      POSTGRES_PASSWORD: hylight
+      POSTGRES_DB: hylight
+    ports:
+      # 15432 on the host: Windows (Hyper-V) reserves 5341-5440 on this machine,
+      # and it never clashes with a Postgres already installed on 5432.
+      - "15432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U hylight -d hylight"]
+      interval: 2s
+      timeout: 3s
+      retries: 20
+
+volumes:
+  pgdata:

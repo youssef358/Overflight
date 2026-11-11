@@ -1,36 +1,68 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# <Project name>
 
-## Getting Started
+<One sentence: what this is and who it is for. Example: "An internal tool that lets the ops team see which pylons need a second inspection, on a map and in a table.">
 
-First, run the development server:
+![screenshot](docs/screenshot.png)
+
+## Run it
+
+Requirements: Node 20+ (tested on 24), Docker Desktop running.
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+npm install        # also copies the MapLibre worker into public/
+npm run setup      # starts PostgreSQL (port 15432), runs migrations, loads demo data
+npm run dev        # http://localhost:3000
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Tests (need the database from `npm run setup`):
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```bash
+npm test
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Reset the database: `npm run db:reset`. Optional: copy `.env.example` to `.env` to point at another database.
 
-## Learn More
+## What it does
 
-To learn more about Next.js, take a look at the following resources:
+- <Feature 1, from the operator's point of view>
+- <Feature 2>
+- <Feature 3>
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## How it's built
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+| Layer | Choice | Why |
+|---|---|---|
+| UI | Next.js (App Router), React, TypeScript, Tailwind | One project for UI and API, types shared end to end |
+| API | Next.js route handlers under `app/api`, validated with zod | REST, thin handlers, all SQL in `lib/*-repo.ts` |
+| Database | PostgreSQL 17 in Docker, plain SQL migrations in `db/migrations` | Constraints in the database (`check`, `unique`, foreign keys), no ORM to hide the SQL |
+| Map | MapLibre GL + OpenStreetMap tiles, GeoJSON | Open source, no API key |
+| Tests | Vitest: pure functions + route handlers called directly | Fast, no server needed |
 
-## Deploy on Vercel
+### Data model
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+<Paste the main tables, or a short list. Say what is derived instead of stored and why.>
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+### API
+
+| Method | Path | Body / query | Returns |
+|---|---|---|---|
+| GET | `/api/...` | `?filter=` | `200 [...]`, `400` on a bad filter |
+| PATCH | `/api/.../:id` | `{ ... }` | `200 {...}`, `400`, `404` |
+
+## Decisions and trade-offs
+
+- <Decision>: <why>, <what I gave up>.
+- <Example: GeoJSON is built in TypeScript from lat/lng columns rather than with PostGIS: enough for a few thousand points; PostGIS is the next step for spatial queries such as "pylons within 50 m of this route".>
+- <Example: no authentication: out of scope for the time box; every write would need a user and an audit trail in a real tool.>
+
+## What I'd do next
+
+1. <The most valuable missing thing>
+2. <...>
+3. <...>
+
+## How I worked
+
+- Time spent: <about 4 hours>.
+- AI tools: I used <Claude Code / Cursor> for <scaffolding, boilerplate, test cases>. I reviewed and ran everything, and I made the design decisions above myself.
+- Starting point: <"Started from an empty create-next-app" or "Started from my own small starter (Docker Compose + migration runner + map component) that I prepared to save setup time; everything domain-specific was written during the assessment.">
