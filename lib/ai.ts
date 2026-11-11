@@ -1,9 +1,15 @@
 // Server only. Describes a photo with a vision model on Amazon Bedrock (Converse API, plain fetch).
 // Off when AWS_BEARER_TOKEN_BEDROCK is not set: uploads then work the same, without a description.
 
+// Written for HyLight's operations team, who inspect infrastructure from an airship:
+// what is there, its apparent condition, and what an inspector should look at.
 const PROMPT =
-  "This photo was taken from an airship by an operations team. In one or two short sentences, " +
-  "describe what it shows: infrastructure, terrain and anything notable. No introduction.";
+  "You help an airship operations team that inspects linear infrastructure (power lines, " +
+  "railways, pipelines, roads) from the air. Describe this aerial photo in at most two short " +
+  "sentences: first the infrastructure visible and its apparent condition, then anything an " +
+  "inspector should check (vegetation close to the line or track, visible damage, works, " +
+  "obstacles, people or vehicles nearby). If nothing needs attention, say so. " +
+  "Only describe what is visible; do not guess. No introduction.";
 
 // Returns null when the feature is off or the call fails: a description is a bonus,
 // never a reason to refuse an upload.
