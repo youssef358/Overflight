@@ -50,6 +50,9 @@ Reset the database: `npm run db:reset`. Optional: copy `.env.example` to `.env` 
 |---|---|---|---|
 | GET | `/api/photos` | | `200 [photo]`, newest first, with uploader email and comment count |
 | GET | `/api/photos/:id/file` | | `200` JPEG bytes, `400` bad id, `404` unknown photo or missing file |
+| POST | `/api/auth/signup` | `{ email, password }` | `201 { id, email }` + session cookie, `400` bad email or password not 8 to 200 characters, `409` email taken |
+| POST | `/api/auth/login` | `{ email, password }` | `200 { id, email }` + session cookie, `400`, `401` same answer for a wrong password and an unknown email |
+| POST | `/api/auth/logout` | | `204`, session deleted, cookie cleared |
 | POST | `/api/photos` | multipart: `file`, `lat`, `lng`, `locationSource` | `201 photo`, `400` missing file or bad fields, `409` same file already uploaded, `413` over 15 MB, `415` not a JPEG |
 
 ## Decisions and trade-offs
@@ -75,6 +78,7 @@ Reset the database: `npm run db:reset`. Optional: copy `.env.example` to `.env` 
 - Upload checks, cheapest first: a declared body over the limit is refused before it is read (413), then the file must be present (400), at most 15 MB (413), the fields valid (400), and the bytes must start like a JPEG (`FF D8 FF`, 415). The file name and the type the browser claims are never trusted. Then the file is written, then the row inserted; if the insert fails (for example a duplicate, 409), the file is deleted, so no orphan file stays on disk.
 - The upload form reads the photo's GPS in the browser with `exifr` (only the start of the file) and runs the same `resolveLocation` rule as the server, so it always shows the position that will be sent. Typing a coordinate makes the position "manual" and it stays so when another file is chosen; "Use the photo's GPS" switches back. Upload stays disabled until the position is valid. After a 201, the returned photo is added to the list and selected, without reloading the list. Trade-off: the position can only be typed, not yet placed by clicking the map.
 - Passwords are hashed with scrypt from `node:crypto` (no package), with a random salt per password, and compared with `timingSafeEqual`. A session is a random 32-byte token in the cookie; the database keeps only its SHA-256 and an expiry 7 days later. Trade-offs: no rate limit on login, no email verification, and expired session rows are never cleaned up (a scheduled `delete ... where expires_at < now()` would do it).
+- The session cookie is `httpOnly` (page scripts cannot read it), `SameSite=Lax` (not sent with POSTs from other sites) and `Secure` in production. Signup logs the new account in. Login gives the same answer for a wrong password and an unknown email. Logout deletes the session row, so a copied cookie stops working too. Trade-off: signup's 409 still reveals that an email has an account; invitation-only signup would close that.
 
 ## What I'd do next
 
