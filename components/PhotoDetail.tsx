@@ -1,13 +1,14 @@
 "use client";
+import { Comments } from "@/components/Comments";
 import { formatDate } from "@/lib/format";
 import type { Photo } from "@/lib/photos";
 
-type Props = { photo: Photo; onClose: () => void };
+type Props = { photo: Photo; onClose: () => void; onCommentAdded: () => void };
 
 const SOURCE_LABEL = { exif: "from the photo's GPS", manual: "placed by hand" } as const;
 
 // The side panel for the selected photo: the image, who took it, where and when.
-export function PhotoDetail({ photo, onClose }: Props) {
+export function PhotoDetail({ photo, onClose, onCommentAdded }: Props) {
   const fileUrl = `/api/photos/${photo.id}/file`;
 
   return (
@@ -16,11 +17,9 @@ export function PhotoDetail({ photo, onClose }: Props) {
         ← All photos
       </button>
 
-      {/* A plain <img>: next/image would fetch the file from the server without the
-          user's login cookie. key: a new photo starts blank instead of showing the old one. */}
+      {/* A plain <img>: next/image would fetch the file from the server without the user's login cookie. */}
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
-        key={photo.id}
         src={fileUrl}
         alt={photo.originalName}
         decoding="async"
@@ -51,6 +50,8 @@ export function PhotoDetail({ photo, onClose }: Props) {
       <a href={fileUrl} target="_blank" rel="noopener" className="inline-block text-sm text-accent hover:underline">
         Open full size
       </a>
+
+      <Comments photoId={photo.id} onAdded={onCommentAdded} />
     </article>
   );
 }

@@ -11,7 +11,7 @@ import type { User } from "@/lib/users";
 // The whole screen. One selectedId is shared by the list, the map and the side panel.
 // Phone: map on top, list below. From xl: map on the left, list column on the right.
 export function PhotoApp({ user, onLogout }: { user: User; onLogout: () => void }) {
-  const { data, error, addPhoto } = usePhotos();
+  const { data, error, addPhoto, incrementCommentCount } = usePhotos();
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [adding, setAdding] = useState(false);
   // Looked up, not stored: after a refetch the panel shows the fresh data.
@@ -55,7 +55,13 @@ export function PhotoApp({ user, onLogout }: { user: User; onLogout: () => void 
               }}
             />
           ) : selected ? (
-            <PhotoDetail photo={selected} onClose={() => setSelectedId(null)} />
+            // key: another photo gets a fresh panel (blank image, new comment thread), never the old one.
+            <PhotoDetail
+              key={selected.id}
+              photo={selected}
+              onClose={() => setSelectedId(null)}
+              onCommentAdded={() => incrementCommentCount(selected.id)}
+            />
           ) : (
             <>
               <button

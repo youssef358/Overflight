@@ -28,5 +28,12 @@ export function usePhotos() {
     setData((current) => [photo, ...(current ?? [])]);
   }
 
-  return { data, error, addPhoto };
+  // After a new comment: keep the list's "N comments" right without reloading every photo.
+  function incrementCommentCount(photoId: number) {
+    setData((current) =>
+      (current ?? []).map((p) => (p.id === photoId ? { ...p, commentCount: p.commentCount + 1 } : p)),
+    );
+  }
+
+  return { data, error, addPhoto, incrementCommentCount };
 }
