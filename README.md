@@ -48,8 +48,7 @@ Reset the database: `npm run db:reset`. Optional: copy `.env.example` to `.env` 
 
 | Method | Path | Body / query | Returns |
 |---|---|---|---|
-| GET | `/api/...` | `?filter=` | `200 [...]`, `400` on a bad filter |
-| PATCH | `/api/.../:id` | `{ ... }` | `200 {...}`, `400`, `404` |
+| GET | `/api/photos` | | `200 [photo]`, newest first, with uploader email and comment count |
 
 ## Decisions and trade-offs
 
@@ -59,6 +58,8 @@ Reset the database: `npm run db:reset`. Optional: copy `.env.example` to `.env` 
 - 0,0 counts as "no position": devices write it when they had no GPS fix. Trade-off: a real photo taken at exactly 0,0 (Gulf of Guinea) cannot be stored.
 - Duplicate files are rejected by a unique SHA-256 of their bytes (409). Trade-off: only byte-identical copies are caught, not a resized or re-saved photo.
 - `photos.user_id` has no `on delete cascade`: deleting a user must not silently delete the team's photos. Trade-off: before deleting such a user, someone decides what happens to their photos. Comments, on the other hand, are deleted with their photo.
+- The comment count is computed in the query (a subquery per photo, served by the `(photo_id, created_at)` index) instead of stored: it can never be out of date. Trade-off: a little more work per request.
+- `GET /api/photos` returns every photo at once: fine for hundreds. For 10k and more, the map would ask only for id and position, by map area (see `docs/STRATEGY.md`).
 
 ## What I'd do next
 
