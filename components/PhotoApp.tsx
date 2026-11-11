@@ -5,6 +5,7 @@ import { PhotoList } from "@/components/PhotoList";
 import { PhotoMap } from "@/components/PhotoMap";
 import { ThemeSelect } from "@/components/ThemeSelect";
 import { UploadForm } from "@/components/UploadForm";
+import { primaryButton } from "@/lib/ui";
 import { usePhotos } from "@/lib/use-photos";
 import type { User } from "@/lib/users";
 
@@ -43,7 +44,12 @@ export function PhotoApp({ user, onLogout }: { user: User; onLogout: () => void 
   return (
     <div className="flex flex-1 flex-col xl:h-dvh">
       <header className="flex items-center justify-between gap-3 border-b px-4 py-3">
-        <h1 className="text-lg font-semibold">Photo map</h1>
+        <h1 className="flex items-center gap-2 text-lg font-semibold">
+          <svg aria-hidden="true" viewBox="0 0 24 24" fill="currentColor" className="size-6 text-accent">
+            <path d="M12 2a7 7 0 0 0-7 7c0 5.25 7 13 7 13s7-7.75 7-13a7 7 0 0 0-7-7Zm0 9.5A2.5 2.5 0 1 1 12 6.5a2.5 2.5 0 0 1 0 5Z" />
+          </svg>
+          Photo map
+        </h1>
         <div className="flex items-center gap-3">
           {/* Hidden on phones: the header has no room for a long email at 375 px. */}
           <span className="hidden text-sm text-muted sm:inline">{user.email}</span>
@@ -87,12 +93,8 @@ export function PhotoApp({ user, onLogout }: { user: User; onLogout: () => void 
             />
           ) : (
             <>
-              <button
-                type="button"
-                onClick={() => setAdding(true)}
-                className="rounded-md bg-accent px-3 py-1.5 text-sm font-medium text-background"
-              >
-                Add a photo
+              <button type="button" onClick={() => setAdding(true)} className={`${primaryButton} w-full`}>
+                + Add a photo
               </button>
               <PhotoList photos={data} selectedId={selectedId} onSelect={setSelectedId} />
             </>

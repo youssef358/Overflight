@@ -1,6 +1,7 @@
 "use client";
 import { useState } from "react";
 import { formatDate } from "@/lib/format";
+import { input, primaryButton } from "@/lib/ui";
 import { useComments } from "@/lib/use-comments";
 
 type Props = { photoId: number; onAdded: () => void };
@@ -63,14 +64,14 @@ export function Comments({ photoId, onAdded }: Props) {
             onChange={(e) => setBody(e.target.value)}
             maxLength={1000}
             rows={3}
-            className="mt-1 block w-full rounded-md border bg-background px-2 py-1"
+            className={input}
           />
         </label>
         {sendError && <p role="alert" className="rounded-lg bg-danger-soft p-3 text-sm text-danger">{sendError}</p>}
         <button
           type="submit"
           disabled={sending || body.trim() === ""}
-          className="rounded-md bg-accent px-3 py-1.5 text-sm font-medium text-background disabled:opacity-50"
+          className={primaryButton}
         >
           {sending ? "Posting…" : "Post"}
         </button>

@@ -1,10 +1,9 @@
 "use client";
 import { useState } from "react";
+import { card, input as inputClass, primaryButton, secondaryButton } from "@/lib/ui";
 import type { User } from "@/lib/users";
 
 type Props = { onLoggedIn: (user: User) => void };
-
-const inputClass = "mt-1 block w-full rounded-md border bg-background px-2 py-1.5";
 
 // One form, two actions: the button pressed picks /api/auth/login or /api/auth/signup.
 // Both answer with the user and set the session cookie, so the next step is the same.
@@ -40,7 +39,7 @@ export function LoginForm({ onLoggedIn }: Props) {
           e.preventDefault();
           send("login");
         }}
-        className="space-y-3"
+        className={`${card} space-y-3 p-5`}
       >
         <label className="block text-sm">
           Email
@@ -65,10 +64,10 @@ export function LoginForm({ onLoggedIn }: Props) {
         )}
 
         <div className="flex gap-3">
-          <button type="submit" disabled={sending} className="rounded-md bg-accent px-3 py-1.5 text-sm font-medium text-background disabled:opacity-50">
+          <button type="submit" disabled={sending} className={primaryButton}>
             Log in
           </button>
-          <button type="button" disabled={sending} onClick={() => send("signup")} className="rounded-md border px-3 py-1.5 text-sm disabled:opacity-50">
+          <button type="button" disabled={sending} onClick={() => send("signup")} className={secondaryButton}>
             Create account
           </button>
         </div>

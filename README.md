@@ -87,6 +87,7 @@ Reset the database: `npm run db:reset`. Optional: copy `.env.example` to `.env` 
 - Comments: the author always comes from the session. The body is trimmed and must be 1 to 1000 characters (zod for the 400 message, the database check as the last guard). Posting on a photo that does not exist is refused by the foreign key (Postgres 23503) and answered 404, with no "check, then insert"; reading checks the photo first, so "no comments yet" (`[]`) and "no such photo" (404) differ.
 - In the side panel, the thread loads per photo and a new comment is added from the POST answer; the list's "N comments" is incremented locally instead of reloading every photo. Comments are rendered as text, so `<script>` in a comment shows as text and never runs. The panel is keyed by photo id, so switching photos never shows the previous photo's thread.
 - On phones the side panel sits under the map, so opening a photo or the upload form scrolls it into view. Escape closes the form or the panel, except while typing in a field, so a half-written comment is not lost.
+- Shared class names for buttons, inputs and cards live in `lib/ui.ts` (plain strings, no component library), so every form looks the same and uses the theme colours. Trade-off: no design system, which would be the next step for a bigger app.
 
 ## What I'd do next
 

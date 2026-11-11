@@ -2,6 +2,7 @@
 import { useState } from "react";
 import { resolveLocation, type GpsTags } from "@/lib/location";
 import { MAX_UPLOAD_BYTES, type Photo } from "@/lib/photos";
+import { card, input, primaryButton, secondaryButton } from "@/lib/ui";
 
 type Props = { onUploaded: (photo: Photo) => void; onCancel: () => void };
 
@@ -67,7 +68,7 @@ export function UploadForm({ onUploaded, onCancel }: Props) {
   }
 
   return (
-    <form onSubmit={submit} className="space-y-3">
+    <form onSubmit={submit} className={`${card} space-y-3 p-4`}>
       <h2 className="text-lg font-semibold">Add a photo</h2>
       <input
         type="file"
@@ -87,7 +88,7 @@ export function UploadForm({ onUploaded, onCancel }: Props) {
                   inputMode="decimal"
                   value={shown[field]}
                   onChange={(e) => setTyped({ ...shown, [field]: e.target.value })}
-                  className="mt-1 block w-full rounded-md border bg-background px-2 py-1"
+                  className={input}
                 />
               </label>
             ))}
@@ -113,11 +114,11 @@ export function UploadForm({ onUploaded, onCancel }: Props) {
         <button
           type="submit"
           disabled={!file || tooBig || !location.ok || sending}
-          className="rounded-md bg-accent px-3 py-1.5 text-sm font-medium text-background disabled:opacity-50"
+          className={primaryButton}
         >
           {sending ? "Uploading…" : "Upload"}
         </button>
-        <button type="button" onClick={onCancel} className="text-sm text-muted hover:underline">
+        <button type="button" onClick={onCancel} className={secondaryButton}>
           Cancel
         </button>
       </div>
