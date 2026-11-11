@@ -10,9 +10,11 @@ function uploadDir(): string {
 
 // Keys come from the database (uuid + .jpg), but a key with a folder in it
 // could read outside uploads/, so refuse it here too.
+// turbopackIgnore: these paths are only known at run time (uploaded photos), so the build
+// must not try to bundle the files they point to (it would trace the whole project).
 function filePath(storageKey: string): string {
   if (path.basename(storageKey) !== storageKey) throw new Error(`invalid storage key: ${storageKey}`);
-  return path.join(uploadDir(), storageKey);
+  return path.join(/*turbopackIgnore: true*/ uploadDir(), storageKey);
 }
 
 // flag "wx": fail instead of overwriting if a file with this key already exists.
@@ -29,7 +31,7 @@ export async function deletePhotoFile(storageKey: string): Promise<void> {
 // Returns null when the file is not on disk.
 export async function readPhotoFile(storageKey: string): Promise<Buffer | null> {
   try {
-    return await readFile(filePath(storageKey));
+    return await readFile(/*turbopackIgnore: true*/ filePath(storageKey));
   } catch (err) {
     if ((err as NodeJS.ErrnoException).code === "ENOENT") return null;
     throw err;
