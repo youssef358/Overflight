@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useEffect, useEffectEvent, useRef, useState } from "react";
 import { PhotoDetail } from "@/components/PhotoDetail";
 import { PhotoList } from "@/components/PhotoList";
 import { PhotoMap } from "@/components/PhotoMap";
@@ -16,6 +16,29 @@ export function PhotoApp({ user, onLogout }: { user: User; onLogout: () => void 
   const [adding, setAdding] = useState(false);
   // Looked up, not stored: after a refetch the panel shows the fresh data.
   const selected = data?.find((p) => p.id === selectedId) ?? null;
+  const panelRef = useRef<HTMLElement>(null);
+
+  // Below xl the panel sits under the map, often off screen: bring it into view when a
+  // photo or the upload form opens. From xl (80rem) it is a column beside the map.
+  useEffect(() => {
+    if ((selectedId !== null || adding) && !window.matchMedia("(min-width: 80rem)").matches) {
+      panelRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+  }, [selectedId, adding]);
+
+  // Escape closes the upload form, or else the photo panel. Ignored while typing in a
+  // field, so a half-written comment is never thrown away by accident.
+  const closeOnEscape = useEffectEvent((event: KeyboardEvent) => {
+    const typing = event.target instanceof HTMLElement && event.target.closest("input, textarea, select");
+    if (event.key !== "Escape" || typing) return;
+    if (adding) setAdding(false);
+    else setSelectedId(null);
+  });
+  useEffect(() => {
+    const listener = (event: KeyboardEvent) => closeOnEscape(event);
+    window.addEventListener("keydown", listener);
+    return () => window.removeEventListener("keydown", listener);
+  }, []);
 
   return (
     <div className="flex flex-1 flex-col xl:h-dvh">
@@ -36,7 +59,7 @@ export function PhotoApp({ user, onLogout }: { user: User; onLogout: () => void 
           <PhotoMap photos={data ?? []} selectedId={selectedId} onSelect={setSelectedId} />
         </section>
 
-        <aside className="space-y-3 p-4 xl:overflow-y-auto">
+        <aside ref={panelRef} className="space-y-3 p-4 xl:overflow-y-auto">
           {error && (
             <p role="alert" className="rounded-lg bg-danger-soft p-3 text-danger">
               {error}
