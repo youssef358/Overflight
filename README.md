@@ -73,6 +73,7 @@ Reset the database: `npm run db:reset`. Optional: copy `.env.example` to `.env` 
 - Upload form fields arrive as strings, or null when missing. Each coordinate must be a non-empty string before it becomes a number, because `Number(null)` and `Number("")` are 0: a missing latitude would otherwise become a real one.
 - A new photo is inserted and read back (with the uploader's email) in one SQL statement (`with ... insert ... returning`), so the API answers with the same shape as the list.
 - Upload checks, cheapest first: a declared body over the limit is refused before it is read (413), then the file must be present (400), at most 15 MB (413), the fields valid (400), and the bytes must start like a JPEG (`FF D8 FF`, 415). The file name and the type the browser claims are never trusted. Then the file is written, then the row inserted; if the insert fails (for example a duplicate, 409), the file is deleted, so no orphan file stays on disk.
+- The upload form reads the photo's GPS in the browser with `exifr` (only the start of the file) and runs the same `resolveLocation` rule as the server, so it always shows the position that will be sent. Typing a coordinate makes the position "manual" and it stays so when another file is chosen; "Use the photo's GPS" switches back. Upload stays disabled until the position is valid. After a 201, the returned photo is added to the list and selected, without reloading the list. Trade-off: the position can only be typed, not yet placed by clicking the map.
 
 ## What I'd do next
 

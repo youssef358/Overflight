@@ -22,5 +22,11 @@ export function usePhotos() {
     return () => controller.abort();
   }, []);
 
-  return { data, error };
+  // POST /api/photos answers with the complete new photo (same shape as the list),
+  // so it is added at the top instead of reloading every photo.
+  function addPhoto(photo: Photo) {
+    setData((current) => [photo, ...(current ?? [])]);
+  }
+
+  return { data, error, addPhoto };
 }
