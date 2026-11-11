@@ -12,6 +12,9 @@ const OSM_STYLE: StyleSpecification = {
       type: "raster",
       tiles: ["https://tile.openstreetmap.org/{z}/{x}/{y}.png"],
       tileSize: 256,
+      // OpenStreetMap has no tiles above zoom 19 (it answers 400). Past 19, MapLibre
+      // enlarges the zoom 19 tiles instead of requesting tiles that do not exist.
+      maxzoom: 19,
       attribution: "© OpenStreetMap contributors",
     },
   },
