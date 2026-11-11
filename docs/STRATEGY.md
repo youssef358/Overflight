@@ -15,6 +15,23 @@ How I would build this app for real production use. The 4-hour build in this rep
 | AI | Amazon Bedrock, a vision model in an EU region | Choice of models behind one API, data stays in the EU, called with an IAM role instead of a long-lived key |
 | Deployment | AWS: container on ECS Fargate, RDS PostgreSQL, S3, CloudFront, SQS | One cloud and one region, next to Bedrock |
 
+## Why AWS, and not tied to it
+
+AWS is the worked example, not a requirement. One provider means one set of accounts, permissions, billing and monitoring, which is simpler for a small platform team. It also keeps the AI next to the data: the worker reads previews from S3 and calls Bedrock in the same EU region, with an IAM role instead of a long-lived key.
+
+The first question I would ask the team is **which cloud, and which hosting rules, HyLight already has.** Infrastructure operators (power grids, railways) often require data to stay in the EU, sometimes with a European provider. The design is built on standard pieces, so it can move:
+
+| Building block | On AWS | Elsewhere |
+|---|---|---|
+| Database | RDS PostgreSQL | Any managed PostgreSQL (Cloud SQL, Azure Database, Scaleway, OVHcloud) |
+| Files | S3 + CloudFront | Any S3-compatible storage (Scaleway, OVHcloud, Cloudflare R2) and any CDN |
+| App and worker | ECS Fargate | Any container platform (Cloud Run, Azure Container Apps, Kubernetes) |
+| Queue | SQS | A queue inside PostgreSQL (for example pg-boss), which removes a service |
+| Sign-in | OIDC with the company SSO | The same: OIDC is a standard |
+| AI | Bedrock | Any vision model API (Mistral, Azure OpenAI, Vertex AI) |
+
+In the code, only `lib/ai.ts` (the Bedrock call) is AWS-specific, and all file access already goes through `lib/storage.ts`.
+
 ## Architecture
 
 ```mermaid
