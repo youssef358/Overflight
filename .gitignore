@@ -41,5 +41,8 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
+# uploaded photos (local storage, see lib/storage.ts)
+/uploads/
+
 # copied from node_modules by postinstall
 /public/maplibre-gl-worker.mjs

@@ -53,9 +53,12 @@ Reset the database: `npm run db:reset`. Optional: copy `.env.example` to `.env` 
 
 ## Decisions and trade-offs
 
-- <Decision>: <why>, <what I gave up>.
-- <Example: GeoJSON is built in TypeScript from lat/lng columns rather than with PostGIS: enough for a few thousand points; PostGIS is the next step for spatial queries such as "pylons within 50 m of this route".>
-- <Example: no authentication: out of scope for the time box; every write would need a user and an audit trail in a real tool.>
+- Rules live in the database (`check`, `unique`, foreign keys) as well as in the API (zod): zod gives clear 400 messages, and the database still holds if a script or a future endpoint skips zod. Trade-off: each rule is written twice.
+- Rewrote `001_init.sql` instead of adding a migration that drops the demo tables: nothing was deployed, so there was no history to keep. Trade-off: an existing local database needs `npm run db:reset`.
+- Sessions store only the SHA-256 of the cookie token: someone who reads the database cannot reuse a live session.
+- 0,0 counts as "no position": devices write it when they had no GPS fix. Trade-off: a real photo taken at exactly 0,0 (Gulf of Guinea) cannot be stored.
+- Duplicate files are rejected by a unique SHA-256 of their bytes (409). Trade-off: only byte-identical copies are caught, not a resized or re-saved photo.
+- `photos.user_id` has no `on delete cascade`: deleting a user must not silently delete the team's photos. Trade-off: before deleting such a user, someone decides what happens to their photos. Comments, on the other hand, are deleted with their photo.
 
 ## What I'd do next
 

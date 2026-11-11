@@ -13,8 +13,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "HyLight starter",
-  description: "Practice starter: Next.js, PostgreSQL, MapLibre",
+  title: "Photo map",
+  description: "Geotagged photos on a map, with comments",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
