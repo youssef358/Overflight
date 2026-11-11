@@ -4,8 +4,6 @@ An internal tool that lets a team upload geotagged photos, see them on a map and
 
 How I would build it for production (technology choices, architecture, data flow, deployment, storage trade-offs, 10k photos, time estimate): [docs/STRATEGY.md](docs/STRATEGY.md).
 
-![screenshot](docs/screenshot.png)
-
 ## Run it
 
 Requirements: Node 20+ (tested on 24), Docker Desktop running.
@@ -15,6 +13,8 @@ npm install        # also copies the MapLibre worker into public/
 npm run setup      # starts PostgreSQL (port 15432), runs migrations, loads demo data
 npm run dev        # http://localhost:3000
 ```
+
+Log in with the demo account `demo@hylight.test` / `hylight-demo` (created by `db/seed.sql`), or create an account. The database starts without photos: upload the geotagged photos provided with the brief.
 
 Tests (need the database from `npm run setup`):
 
@@ -28,9 +28,11 @@ Optional AI descriptions: copy `.env.example` to `.env` and set `AWS_BEARER_TOKE
 
 ## What it does
 
-- <Feature 1, from the operator's point of view>
-- <Feature 2>
-- <Feature 3>
+- **Accounts.** Sign up or log in; every photo and comment needs an account. The map is shared by the whole team.
+- **Add a photo.** Pick a JPEG: its GPS position is read from the photo and shown as a pin on the map before anything is sent. A photo without GPS (or with 0,0) gets a typed position. The same file cannot be uploaded twice.
+- **See the photos.** Every photo is a grey circle on the map and a row in the list, with a "GPS" or "Placed by hand" badge and its comment count. Selecting one, on the map or in the list, flies the map to it, shows a small card above the marker and opens the side panel: the image, uploader, date, position and, when the AI is on, a short inspection note ("Description (AI)").
+- **Comment** on any photo; **delete** your own photos and your own comments.
+- **Light, dark or system theme**, on a phone (map on top, panel below) or a wide screen (map left, panel right). Escape closes the panel.
 
 ## How it's built
 
@@ -40,27 +42,44 @@ Optional AI descriptions: copy `.env.example` to `.env` and set `AWS_BEARER_TOKE
 | API | Next.js route handlers under `app/api`, validated with zod | REST, thin handlers, all SQL in `lib/*-repo.ts` |
 | Database | PostgreSQL 17 in Docker, plain SQL migrations in `db/migrations` | Constraints in the database (`check`, `unique`, foreign keys), no ORM to hide the SQL |
 | Map | MapLibre GL + OpenStreetMap tiles, GeoJSON | Open source, no API key |
+| Auth | Email and password (scrypt from `node:crypto`), sessions in the database, httpOnly cookie | No package hiding the security code; every line can be read |
+| Photos | Files in `uploads/` behind `lib/storage.ts`, GPS read in the browser with `exifr` | One file to rewrite for S3; the user sees the position before uploading |
+| AI (optional) | Amazon Bedrock Converse API, plain `fetch` | No SDK; off without a key |
 | Tests | Vitest: pure functions + route handlers called directly | Fast, no server needed |
 
 ### Data model
 
-<Paste the main tables, or a short list. Say what is derived instead of stored and why.>
+```
+users     id, email (unique, lowercase), password_hash ("scrypt$salt$hash"), created_at
+sessions  id (SHA-256 of the cookie token), user_id -> users (cascade), created_at, expires_at
+photos    id, user_id -> users, storage_key (unique, "<uuid>.jpg"), sha256 (unique),
+          original_name, lat, lng (in range, not 0,0), location_source ('exif' or 'manual'),
+          description (AI, at most 2000 characters, may be empty), created_at
+comments  id, photo_id -> photos (cascade), user_id -> users,
+          body (trimmed, 1 to 1000 characters), created_at; index (photo_id, created_at)
+```
+
+Derived, not stored: the comment count (a subquery), the uploader's email (a join) and the map's GeoJSON (built in the browser from the list), so none of them can go out of date.
 
 ### API
 
 | Method | Path | Body / query | Returns |
 |---|---|---|---|
-| GET | `/api/auth/me` | | `200 { id, email }`, `401` not logged in |
-| GET | `/api/photos` | | `200 [photo]`, newest first, with uploader email and comment count |
-| GET | `/api/photos/:id/file` | | `200` JPEG bytes, `400` bad id, `404` unknown photo or missing file |
+Every route except signup and login answers `401` without a session.
+
+| Method | Path | Body / query | Returns |
+|---|---|---|---|
 | POST | `/api/auth/signup` | `{ email, password }` | `201 { id, email }` + session cookie, `400` bad email or password not 8 to 200 characters, `409` email taken |
 | POST | `/api/auth/login` | `{ email, password }` | `200 { id, email }` + session cookie, `400`, `401` same answer for a wrong password and an unknown email |
 | POST | `/api/auth/logout` | | `204`, session deleted, cookie cleared |
+| GET | `/api/auth/me` | | `200 { id, email }`, `401` not logged in |
+| GET | `/api/photos` | | `200 [photo]`, newest first, with uploader email and comment count |
+| POST | `/api/photos` | multipart: `file`, `lat`, `lng`, `locationSource`, optional `preview` (small copy for the AI) | `201 photo`, `400` missing file or bad fields, `409` same file already uploaded, `413` over 15 MB, `415` not a JPEG |
+| GET | `/api/photos/:id/file` | | `200` JPEG bytes, `400` bad id, `404` unknown photo or missing file |
 | DELETE | `/api/photos/:id` | | `204` (photo, its comments and its file deleted), `400` bad id, `403` not the uploader, `404` unknown photo |
 | GET | `/api/photos/:id/comments` | | `200 [comment]` oldest first, `400` bad id, `404` unknown photo |
 | POST | `/api/photos/:id/comments` | `{ body }` | `201 comment` (author from the session), `400` empty or over 1000 characters, `404` unknown photo |
 | DELETE | `/api/photos/:id/comments/:commentId` | | `204`, `400` bad ids, `403` not the author, `404` unknown comment or not on this photo |
-| POST | `/api/photos` | multipart: `file`, `lat`, `lng`, `locationSource` | `201 photo`, `400` missing file or bad fields, `409` same file already uploaded, `413` over 15 MB, `415` not a JPEG |
 
 ## Decisions and trade-offs
 
@@ -78,7 +97,7 @@ Optional AI descriptions: copy `.env.example` to `.env` and set `AWS_BEARER_TOKE
 - Marker colours are fixed hex values, not theme variables: the OpenStreetMap tiles are light in both themes.
 - Map tiles come from the public OpenStreetMap servers: no key, no account. Their usage policy does not allow heavy traffic, so production would use vector tiles from a provider or self-hosted (see `docs/STRATEGY.md`).
 - Photo files live in `uploads/` (outside `public/`) and are served by a route, so access can require a login. All file access goes through `lib/storage.ts`, which is the one file to rewrite for S3. The browser may cache a file for a year (`private, immutable`): a photo's bytes never change. Trade-off: the route reads the whole file into memory; streaming it would matter for many large downloads at once.
-- Selecting a photo replaces the list with a side panel (image, uploader, date, position and its source), like a maps app; "All photos" goes back. The panel shows the 5 MB original for now: previews come with the AI step, which needs a smaller image anyway.
+- Selecting a photo replaces the list with a side panel (image, uploader, date, position and its source), like a maps app; "All photos" goes back. Trade-off: the panel and the map card show the 5 MB original (downloaded once, then cached); stored previews are the first item in "What I'd do next".
 - The core rule is one pure function, `resolveLocation` in `lib/location.ts`, written test-first: a position placed by hand wins over the photo's GPS; GPS that is missing, out of range, not a number or 0,0 counts as no GPS; with neither, the upload is refused. The browser runs it to pre-fill the form, the server re-checks the same `isValidPosition`, and the database checks it a third time. Trade-off: the position is user input, so the server cannot prove a position marked `exif` really came from the camera.
 - Upload form fields arrive as strings, or null when missing. Each coordinate must be a non-empty string before it becomes a number, because `Number(null)` and `Number("")` are 0: a missing latitude would otherwise become a real one.
 - A new photo is inserted and read back (with the uploader's email) in one SQL statement (`with ... insert ... returning`), so the API answers with the same shape as the list.
@@ -100,9 +119,13 @@ Optional AI descriptions: copy `.env.example` to `.env` and set `AWS_BEARER_TOKE
 
 ## What I'd do next
 
-1. <The most valuable missing thing>
-2. <...>
-3. <...>
+1. **Previews made on the server at upload** (a small and a medium JPEG), used by the list, the side panel, the map card and the AI, instead of the 5 MB original everywhere.
+2. **Edit a photo's position** (and regenerate its AI description) instead of deleting and re-uploading it; placing a photo by clicking on the map.
+3. **Map at scale**: clustering for 10k photos and for close neighbours, loading photos by map area with PostGIS, vector tiles, a tooltip with the name on hover.
+4. **Production storage and AI**: S3 with presigned uploads and CloudFront; the AI description in a background worker, so the upload answers at once.
+5. **Accounts**: company SSO instead of passwords; until then a rate limit on login, email verification and a cleanup of expired sessions.
+6. **Moderation and duplicates**: let a photo's owner or an admin remove comments; catch near-duplicates (a resized or re-saved photo) with a perceptual hash.
+7. **End-to-end tests in a browser** (Playwright) for upload, comment and delete, run in CI.
 
 ## How I worked
 
