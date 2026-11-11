@@ -1,6 +1,7 @@
 "use client";
 import { useState } from "react";
 import { PhotoList } from "@/components/PhotoList";
+import { ThemeSelect } from "@/components/ThemeSelect";
 import { usePhotos } from "@/lib/use-photos";
 
 // The whole screen. One selectedId is shared by the list, the map and the side panel.
@@ -11,8 +12,9 @@ export function PhotoApp() {
 
   return (
     <div className="flex flex-1 flex-col xl:h-dvh">
-      <header className="border-b px-4 py-3">
+      <header className="flex items-center justify-between gap-3 border-b px-4 py-3">
         <h1 className="text-lg font-semibold">Photo map</h1>
+        <ThemeSelect />
       </header>
 
       <div className="flex flex-1 flex-col xl:grid xl:min-h-0 xl:grid-cols-[1fr_28rem]">

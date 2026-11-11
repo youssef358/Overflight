@@ -61,7 +61,7 @@ Reset the database: `npm run db:reset`. Optional: copy `.env.example` to `.env` 
 - The comment count is computed in the query (a subquery per photo, served by the `(photo_id, created_at)` index) instead of stored: it can never be out of date. Trade-off: a little more work per request.
 - `GET /api/photos` returns every photo at once: fine for hundreds. For 10k and more, the map would ask only for id and position, by map area (see `docs/STRATEGY.md`).
 - One `selectedId` in `PhotoApp` is shared by the list, the map and the side panel: one source of truth, so they cannot disagree about which photo is selected.
-- Colours are CSS variables in `app/globals.css`, switched by the operating system's light or dark setting. Trade-off: no in-app theme toggle.
+- Colours are CSS variables in `app/globals.css`, each written once as `light-dark(light, dark)`. They follow the operating system unless the theme select in the header forces light or dark. The choice is saved in `localStorage` and applied by a small script in `<head>` before the first paint, so the page never flashes the wrong theme. Trade-off: the choice is remembered per browser, not per account.
 
 ## What I'd do next
 

@@ -1,32 +1,28 @@
 @import "tailwindcss";
 
-/* Theme colours: every component uses these names, so dark mode is defined once, here. */
+/* Theme colours: every component uses these names, so the theme is defined once, here.
+   light-dark(a, b) picks a or b from color-scheme: "light dark" follows the operating
+   system, and the theme select in the header forces one by setting <html data-theme>.
+   color-scheme also switches native controls (inputs, scrollbars). */
 :root {
-  /* Native controls (inputs, scrollbars) follow the same light or dark theme. */
   color-scheme: light dark;
-  --background: #ffffff;
-  --foreground: #171717;
-  --muted: #64748b;
-  --surface: #f1f5f9;
-  --border: #e2e8f0;
-  --accent: #2563eb;
-  --accent-soft: #dbeafe;
-  --danger: #b91c1c;
-  --danger-soft: #fef2f2;
+  --background: light-dark(#ffffff, #0a0a0a);
+  --foreground: light-dark(#171717, #ededed);
+  --muted: light-dark(#64748b, #94a3b8);
+  --surface: light-dark(#f1f5f9, #1e293b);
+  --border: light-dark(#e2e8f0, #334155);
+  --accent: light-dark(#2563eb, #60a5fa);
+  --accent-soft: light-dark(#dbeafe, #1e3a5f);
+  --danger: light-dark(#b91c1c, #fca5a5);
+  --danger-soft: light-dark(#fef2f2, #450a0a);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-    --muted: #94a3b8;
-    --surface: #1e293b;
-    --border: #334155;
-    --accent: #60a5fa;
-    --accent-soft: #1e3a5f;
-    --danger: #fca5a5;
-    --danger-soft: #450a0a;
-  }
+:root[data-theme="light"] {
+  color-scheme: light;
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
 }
 
 /* Expose the variables as Tailwind colours: bg-surface, text-muted, bg-accent-soft... */
