@@ -49,6 +49,7 @@ Reset the database: `npm run db:reset`. Optional: copy `.env.example` to `.env` 
 | Method | Path | Body / query | Returns |
 |---|---|---|---|
 | GET | `/api/photos` | | `200 [photo]`, newest first, with uploader email and comment count |
+| GET | `/api/photos/:id/file` | | `200` JPEG bytes, `400` bad id, `404` unknown photo or missing file |
 
 ## Decisions and trade-offs
 
@@ -65,6 +66,7 @@ Reset the database: `npm run db:reset`. Optional: copy `.env.example` to `.env` 
 - Map markers are one GPU circle layer (grey), and the selected photo is drawn again by a second layer filtered on its id (bigger, blue). Clicking a marker or a list row selects; selecting flies the map to the photo. Trade-off: photos a few metres apart (DSC00751 and DSC00752 are 4 m apart) overlap until you zoom far in; the list reaches both, clustering would group them.
 - Marker colours are fixed hex values, not theme variables: the OpenStreetMap tiles are light in both themes.
 - Map tiles come from the public OpenStreetMap servers: no key, no account. Their usage policy does not allow heavy traffic, so production would use vector tiles from a provider or self-hosted (see `docs/STRATEGY.md`).
+- Photo files live in `uploads/` (outside `public/`) and are served by a route, so access can require a login. All file access goes through `lib/storage.ts`, which is the one file to rewrite for S3. The browser may cache a file for a year (`private, immutable`): a photo's bytes never change. Trade-off: the route reads the whole file into memory; streaming it would matter for many large downloads at once.
 
 ## What I'd do next
 

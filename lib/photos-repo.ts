@@ -19,3 +19,13 @@ export async function listPhotos(): Promise<Photo[]> {
   );
   return rows;
 }
+
+// Only the server ever needs the storage key, so it has its own query.
+// Returns null when the photo does not exist, so the route can answer 404.
+export async function getStorageKey(id: number): Promise<string | null> {
+  const { rows } = await pool.query<{ storageKey: string }>(
+    `select storage_key as "storageKey" from photos where id = $1`,
+    [id],
+  );
+  return rows[0]?.storageKey ?? null;
+}
