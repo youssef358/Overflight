@@ -1,10 +1,15 @@
 "use client";
-import { useState } from "react";
-import { resolveLocation, type GpsTags } from "@/lib/location";
+import { useEffect, useMemo, useState } from "react";
+import { resolveLocation, type GpsTags, type Position } from "@/lib/location";
 import { MAX_UPLOAD_BYTES, type Photo } from "@/lib/photos";
 import { card, input, primaryButton, secondaryButton } from "@/lib/ui";
 
-type Props = { onUploaded: (photo: Photo) => void; onCancel: () => void };
+type Props = {
+  onUploaded: (photo: Photo) => void;
+  onCancel: () => void;
+  // The position that would be sent now (null when there is none), for the pin on the map.
+  onPositionChange: (position: Position | null) => void;
+};
 
 // An empty field must stay "not a number": Number("") is 0, which is a real latitude.
 const toNumber = (text: string) => (text.trim() === "" ? Number.NaN : Number(text));
@@ -16,7 +21,7 @@ const MESSAGES = {
   invalid_position: "Latitude must be between -90 and 90, longitude between -180 and 180, and not 0, 0.",
 };
 
-export function UploadForm({ onUploaded, onCancel }: Props) {
+export function UploadForm({ onUploaded, onCancel, onPositionChange }: Props) {
   const [file, setFile] = useState<File | null>(null);
   const [gps, setGps] = useState<GpsTags | null>(null);
   // null: use the photo's GPS. Set as soon as the user edits a coordinate.
@@ -35,6 +40,21 @@ export function UploadForm({ onUploaded, onCancel }: Props) {
   const shown = typed ?? (fromGps.ok ? { lat: String(fromGps.lat), lng: String(fromGps.lng) } : { lat: "", lng: "" });
   // Checked here too, so the user does not wait for a 15 MB upload to be refused.
   const tooBig = file !== null && file.size > MAX_UPLOAD_BYTES;
+
+  // A local URL for the chosen file: the preview needs no upload. Revoked when the
+  // file changes or the form closes, so the browser can free the memory.
+  const previewUrl = useMemo(() => (file ? URL.createObjectURL(file) : null), [file]);
+  useEffect(() => () => {
+    if (previewUrl) URL.revokeObjectURL(previewUrl);
+  }, [previewUrl]);
+
+  // Tell the map where the photo would land; numbers, not the object, so it only runs on a real move.
+  const pinLat = location.ok ? location.lat : null;
+  const pinLng = location.ok ? location.lng : null;
+  useEffect(() => {
+    onPositionChange(pinLat === null || pinLng === null ? null : { lat: pinLat, lng: pinLng });
+    return () => onPositionChange(null);
+  }, [pinLat, pinLng, onPositionChange]);
 
   async function chooseFile(chosen: File | null) {
     setFile(chosen);
@@ -77,6 +97,12 @@ export function UploadForm({ onUploaded, onCancel }: Props) {
         onChange={(e) => chooseFile(e.target.files?.[0] ?? null)}
         className="block w-full text-sm file:mr-3 file:rounded-md file:border file:bg-surface file:px-3 file:py-1"
       />
+
+      {previewUrl && (
+        // A plain <img>: the source is a local blob: URL, nothing for next/image to optimise.
+        // eslint-disable-next-line @next/next/no-img-element
+        <img src={previewUrl} alt="The chosen photo" className="aspect-[3/2] w-full rounded-lg bg-surface object-contain" />
+      )}
 
       {file && (
         <>

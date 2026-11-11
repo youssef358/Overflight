@@ -3,6 +3,7 @@ import "maplibre-gl/dist/maplibre-gl.css";
 import { useEffect, useEffectEvent, useRef, useState } from "react";
 import type { GeoJSONSource, Map as MapLibreMap, StyleSpecification } from "maplibre-gl";
 import type { FeatureCollection, Point } from "geojson";
+import type { Position } from "@/lib/location";
 import type { Photo } from "@/lib/photos";
 
 const OSM_STYLE: StyleSpecification = {
@@ -26,10 +27,10 @@ const GREY = "#64748b";
 const ACCENT = "#2563eb";
 
 // GeoJSON coordinates are [longitude, latitude]: the reverse of how people say them.
-function toGeoJSON(photos: Photo[]): FeatureCollection<Point> {
+function toGeoJSON(points: { lat: number; lng: number; id?: number }[]): FeatureCollection<Point> {
   return {
     type: "FeatureCollection",
-    features: photos.map((p) => ({
+    features: points.map((p) => ({
       type: "Feature",
       geometry: { type: "Point", coordinates: [p.lng, p.lat] },
       properties: { id: p.id },
@@ -37,9 +38,14 @@ function toGeoJSON(photos: Photo[]): FeatureCollection<Point> {
   };
 }
 
-type Props = { photos: Photo[]; selectedId: number | null; onSelect: (id: number) => void };
+type Props = {
+  photos: Photo[];
+  selectedId: number | null;
+  onSelect: (id: number) => void;
+  draft: Position | null; // where the photo being uploaded would land
+};
 
-export function PhotoMap({ photos, selectedId, onSelect }: Props) {
+export function PhotoMap({ photos, selectedId, onSelect, draft }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<MapLibreMap | null>(null);
   const fittedRef = useRef(false);
@@ -81,6 +87,14 @@ export function PhotoMap({ photos, selectedId, onSelect }: Props) {
           source: "photos",
           filter: ["==", ["get", "id"], -1],
           paint: { "circle-radius": 9, "circle-color": ACCENT, "circle-stroke-width": 3, "circle-stroke-color": "#ffffff" },
+        });
+        // The photo being uploaded: a hollow accent ring, on top of everything.
+        m.addSource("draft", { type: "geojson", data: toGeoJSON([]) });
+        m.addLayer({
+          id: "draft",
+          type: "circle",
+          source: "draft",
+          paint: { "circle-radius": 9, "circle-color": "#ffffff", "circle-stroke-width": 4, "circle-stroke-color": ACCENT },
         });
 
         m.on("click", "photos", (e) => {
@@ -125,6 +139,19 @@ export function PhotoMap({ photos, selectedId, onSelect }: Props) {
     map.setFilter("selected", ["==", ["get", "id"], selectedId ?? -1]);
     if (selectedId !== null) flyToPhoto(map, selectedId);
   }, [selectedId, ready]);
+
+  // 4. Move the draft pin. Pan only when it is out of view, so typing does not shake the map.
+  const draftLat = draft?.lat;
+  const draftLng = draft?.lng;
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!ready || !map) return;
+    const pin = draftLat === undefined || draftLng === undefined ? [] : [{ lat: draftLat, lng: draftLng }];
+    (map.getSource("draft") as GeoJSONSource).setData(toGeoJSON(pin));
+    if (pin.length && !map.getBounds().contains([pin[0].lng, pin[0].lat])) {
+      map.easeTo({ center: [pin[0].lng, pin[0].lat] });
+    }
+  }, [draftLat, draftLng, ready]);
 
   return <div ref={containerRef} className="h-full w-full" />;
 }

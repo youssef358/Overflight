@@ -5,6 +5,7 @@ import { PhotoList } from "@/components/PhotoList";
 import { PhotoMap } from "@/components/PhotoMap";
 import { ThemeSelect } from "@/components/ThemeSelect";
 import { UploadForm } from "@/components/UploadForm";
+import type { Position } from "@/lib/location";
 import { primaryButton } from "@/lib/ui";
 import { usePhotos } from "@/lib/use-photos";
 import type { User } from "@/lib/users";
@@ -15,6 +16,8 @@ export function PhotoApp({ user, onLogout }: { user: User; onLogout: () => void 
   const { data, error, addPhoto, incrementCommentCount } = usePhotos();
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [adding, setAdding] = useState(false);
+  // Where the photo being uploaded would land, drawn as a pin on the map.
+  const [draft, setDraft] = useState<Position | null>(null);
   // Looked up, not stored: after a refetch the panel shows the fresh data.
   const selected = data?.find((p) => p.id === selectedId) ?? null;
   const panelRef = useRef<HTMLElement>(null);
@@ -62,7 +65,12 @@ export function PhotoApp({ user, onLogout }: { user: User; onLogout: () => void 
 
       <div className="flex flex-1 flex-col xl:grid xl:min-h-0 xl:grid-cols-[1fr_28rem]">
         <section aria-label="Map" className="h-[45vh] border-b xl:h-auto xl:border-r xl:border-b-0">
-          <PhotoMap photos={data ?? []} selectedId={selectedId} onSelect={setSelectedId} />
+          <PhotoMap
+            photos={data ?? []}
+            selectedId={selectedId}
+            onSelect={setSelectedId}
+            draft={adding ? draft : null}
+          />
         </section>
 
         <aside ref={panelRef} className="space-y-3 p-4 xl:overflow-y-auto">
@@ -75,6 +83,7 @@ export function PhotoApp({ user, onLogout }: { user: User; onLogout: () => void 
             !error && <p className="text-muted">Loading photos…</p>
           ) : adding ? (
             <UploadForm
+              onPositionChange={setDraft}
               onCancel={() => setAdding(false)}
               onUploaded={(photo) => {
                 // One render: the new photo is in the list and selected, so the map flies to it.
