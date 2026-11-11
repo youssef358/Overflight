@@ -50,6 +50,7 @@ Reset the database: `npm run db:reset`. Optional: copy `.env.example` to `.env` 
 |---|---|---|---|
 | GET | `/api/photos` | | `200 [photo]`, newest first, with uploader email and comment count |
 | GET | `/api/photos/:id/file` | | `200` JPEG bytes, `400` bad id, `404` unknown photo or missing file |
+| POST | `/api/photos` | multipart: `file`, `lat`, `lng`, `locationSource` | `201 photo`, `400` missing file or bad fields, `409` same file already uploaded, `413` over 15 MB, `415` not a JPEG |
 
 ## Decisions and trade-offs
 
@@ -71,6 +72,7 @@ Reset the database: `npm run db:reset`. Optional: copy `.env.example` to `.env` 
 - The core rule is one pure function, `resolveLocation` in `lib/location.ts`, written test-first: a position placed by hand wins over the photo's GPS; GPS that is missing, out of range, not a number or 0,0 counts as no GPS; with neither, the upload is refused. The browser runs it to pre-fill the form, the server re-checks the same `isValidPosition`, and the database checks it a third time. Trade-off: the position is user input, so the server cannot prove a position marked `exif` really came from the camera.
 - Upload form fields arrive as strings, or null when missing. Each coordinate must be a non-empty string before it becomes a number, because `Number(null)` and `Number("")` are 0: a missing latitude would otherwise become a real one.
 - A new photo is inserted and read back (with the uploader's email) in one SQL statement (`with ... insert ... returning`), so the API answers with the same shape as the list.
+- Upload checks, cheapest first: a declared body over the limit is refused before it is read (413), then the file must be present (400), at most 15 MB (413), the fields valid (400), and the bytes must start like a JPEG (`FF D8 FF`, 415). The file name and the type the browser claims are never trusted. Then the file is written, then the row inserted; if the insert fails (for example a duplicate, 409), the file is deleted, so no orphan file stays on disk.
 
 ## What I'd do next
 
