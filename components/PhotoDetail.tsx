@@ -41,7 +41,7 @@ export function PhotoDetail({ photo, onClose, onCommentAdded }: Props) {
         </dd>
         {photo.description && (
           <>
-            <dt className="text-muted">Description</dt>
+            <dt className="text-muted">Description (AI)</dt>
             <dd>{photo.description}</dd>
           </>
         )}

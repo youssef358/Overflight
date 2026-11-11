@@ -1,13 +1,17 @@
 import { createHash, randomUUID } from "node:crypto";
 import type { NextRequest } from "next/server";
+import { describePhoto } from "@/lib/ai";
 import { getSessionUser, unauthorized } from "@/lib/auth";
-import { MAX_UPLOAD_BYTES, uploadFieldsSchema } from "@/lib/photos";
-import { createPhoto, listPhotos } from "@/lib/photos-repo";
+import { MAX_UPLOAD_BYTES, type Photo, uploadFieldsSchema } from "@/lib/photos";
+import { createPhoto, listPhotos, setDescription } from "@/lib/photos-repo";
 import { deletePhotoFile, savePhotoFile } from "@/lib/storage";
 
 function error(status: number, message: string) {
   return Response.json({ error: message }, { status });
 }
+
+// Trust the bytes, not the file name or the type the browser claims: a JPEG starts with FF D8 FF.
+const isJpeg = (b: Uint8Array) => b[0] === 0xff && b[1] === 0xd8 && b[2] === 0xff;
 
 // GET /api/photos: every photo, newest first (the team map is shared by all logged-in users).
 export async function GET(request: NextRequest) {
@@ -43,24 +47,23 @@ export async function POST(request: NextRequest) {
     return Response.json({ error: "Invalid position or source.", issues: fields.error.issues }, { status: 400 });
   }
 
-  // Trust the bytes, not the file name or the type the browser claims: a JPEG starts with FF D8 FF.
   const bytes = Buffer.from(await file.arrayBuffer());
-  if (bytes[0] !== 0xff || bytes[1] !== 0xd8 || bytes[2] !== 0xff) {
+  if (!isJpeg(bytes)) {
     return error(415, "Only JPEG photos are accepted.");
   }
 
   // File first, then the row. If the insert fails, delete the file: never an orphan on disk.
   const storageKey = `${randomUUID()}.jpg`;
   await savePhotoFile(storageKey, bytes);
+  let photo: Photo;
   try {
-    const photo = await createPhoto({
+    photo = await createPhoto({
       userId: user.id,
       storageKey,
       sha256: createHash("sha256").update(bytes).digest("hex"),
       originalName: file.name.trim().slice(0, 255) || "photo.jpg",
       ...fields.data,
     });
-    return Response.json(photo, { status: 201 });
   } catch (err) {
     await deletePhotoFile(storageKey);
     // Postgres names the unique constraint on photos.sha256 "photos_sha256_key".
@@ -69,4 +72,17 @@ export async function POST(request: NextRequest) {
     }
     throw err;
   }
+
+  // Optional AI description, from the small copy the browser sends: the originals are over
+  // Bedrock's image size limit. No key, no copy or a failed call simply means no description.
+  const preview = form.get("preview");
+  if (preview instanceof File && preview.size > 0 && preview.size <= 1024 * 1024) {
+    const previewBytes = new Uint8Array(await preview.arrayBuffer());
+    const description = isJpeg(previewBytes) ? await describePhoto(previewBytes) : null;
+    if (description) {
+      await setDescription(photo.id, description);
+      photo = { ...photo, description };
+    }
+  }
+  return Response.json(photo, { status: 201 });
 }

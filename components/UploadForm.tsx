@@ -11,6 +11,21 @@ type Props = {
   onPositionChange: (position: Position | null) => void;
 };
 
+// A 1024 px JPEG copy, drawn on a canvas in the browser: Bedrock refuses images over
+// about 3.75 MB and these originals are 4 to 5 MB. The stored photo stays the original.
+async function smallCopy(file: File): Promise<Blob> {
+  const bitmap = await createImageBitmap(file);
+  const scale = Math.min(1, 1024 / Math.max(bitmap.width, bitmap.height));
+  const canvas = document.createElement("canvas");
+  canvas.width = Math.round(bitmap.width * scale);
+  canvas.height = Math.round(bitmap.height * scale);
+  canvas.getContext("2d")?.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+  bitmap.close();
+  return new Promise((resolve, reject) =>
+    canvas.toBlob((blob) => (blob ? resolve(blob) : reject(new Error("no preview"))), "image/jpeg", 0.8),
+  );
+}
+
 // An empty field must stay "not a number": Number("") is 0, which is a real latitude.
 const toNumber = (text: string) => (text.trim() === "" ? Number.NaN : Number(text));
 
@@ -80,6 +95,9 @@ export function UploadForm({ onUploaded, onCancel, onPositionChange }: Props) {
     body.append("lat", String(location.lat));
     body.append("lng", String(location.lng));
     body.append("locationSource", location.source);
+    // A small copy for the AI description (the server ignores it when the feature is off).
+    const preview = await smallCopy(file).catch(() => null);
+    if (preview) body.append("preview", preview, "preview.jpg");
     const res = await fetch("/api/photos", { method: "POST", body }).catch(() => null);
     setSending(false);
     if (res?.status === 201) return onUploaded(await res.json());

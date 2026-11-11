@@ -46,6 +46,10 @@ export async function createPhoto(p: NewPhoto): Promise<Photo> {
   return rows[0];
 }
 
+export async function setDescription(id: number, description: string): Promise<void> {
+  await pool.query("update photos set description = $2 where id = $1", [id, description]);
+}
+
 // So "no comments yet" ([]) and "no such photo" (404) give different answers.
 export async function photoExists(id: number): Promise<boolean> {
   const { rowCount } = await pool.query("select 1 from photos where id = $1", [id]);
