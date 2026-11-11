@@ -28,7 +28,10 @@ export function UploadForm({ onUploaded, onCancel }: Props) {
     gps,
     manual: typed && { lat: toNumber(typed.lat), lng: toNumber(typed.lng) },
   });
-  const shown = typed ?? { lat: gps?.latitude?.toString() ?? "", lng: gps?.longitude?.toString() ?? "" };
+  // The fields show the photo's GPS only when the rule accepts it: GPS at 0,0 or out of
+  // range leaves them empty for the user to type, instead of showing a refused position.
+  const fromGps = resolveLocation({ gps });
+  const shown = typed ?? (fromGps.ok ? { lat: String(fromGps.lat), lng: String(fromGps.lng) } : { lat: "", lng: "" });
   // Checked here too, so the user does not wait for a 15 MB upload to be refused.
   const tooBig = file !== null && file.size > MAX_UPLOAD_BYTES;
 
