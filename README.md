@@ -1,6 +1,8 @@
-# <Project name>
+# Photo map
 
-<One sentence: what this is and who it is for. Example: "An internal tool that lets the ops team see which pylons need a second inspection, on a map and in a table.">
+An internal tool that lets a team upload geotagged photos, see them on a map and comment on them.
+
+How I would build it for production (technology choices, architecture, data flow, deployment, storage trade-offs, 10k photos, time estimate): [docs/STRATEGY.md](docs/STRATEGY.md).
 
 ![screenshot](docs/screenshot.png)
 
