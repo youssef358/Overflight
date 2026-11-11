@@ -54,6 +54,8 @@ Reset the database: `npm run db:reset`. Optional: copy `.env.example` to `.env` 
 | POST | `/api/auth/signup` | `{ email, password }` | `201 { id, email }` + session cookie, `400` bad email or password not 8 to 200 characters, `409` email taken |
 | POST | `/api/auth/login` | `{ email, password }` | `200 { id, email }` + session cookie, `400`, `401` same answer for a wrong password and an unknown email |
 | POST | `/api/auth/logout` | | `204`, session deleted, cookie cleared |
+| GET | `/api/photos/:id/comments` | | `200 [comment]` oldest first, `400` bad id, `404` unknown photo |
+| POST | `/api/photos/:id/comments` | `{ body }` | `201 comment` (author from the session), `400` empty or over 1000 characters, `404` unknown photo |
 | POST | `/api/photos` | multipart: `file`, `lat`, `lng`, `locationSource` | `201 photo`, `400` missing file or bad fields, `409` same file already uploaded, `413` over 15 MB, `415` not a JPEG |
 
 ## Decisions and trade-offs
@@ -82,6 +84,7 @@ Reset the database: `npm run db:reset`. Optional: copy `.env.example` to `.env` 
 - The session cookie is `httpOnly` (page scripts cannot read it), `SameSite=Lax` (not sent with POSTs from other sites) and `Secure` in production. Signup logs the new account in. Login gives the same answer for a wrong password and an unknown email. Logout deletes the session row, so a copied cookie stops working too. Trade-off: signup's 409 still reveals that an email has an account; invitation-only signup would close that.
 - Every photo route checks the session itself (`getSessionUser`) and answers 401 first, before reading the body; the upload's owner comes from the session, never from the request. There is no `proxy.ts`: in Next 16 it would buffer request bodies and cut them at 10 MB, which would corrupt large uploads without an error. All API routes except signup and login answer 401 without a session.
 - The page is the same static shell for everyone and holds no data. `AuthGate` asks `GET /api/auth/me` on load and shows the login form (one form, "Log in" or "Create account") or the app. I chose this over a server-side redirect: with `cacheComponents` on, reading cookies in a page needs a `<Suspense>` boundary and a redirect inside a streamed page. Trade-off: a short "Loading…" before the form or the app, and a session that expires while the app is open shows an error instead of the login form.
+- Comments: the author always comes from the session. The body is trimmed and must be 1 to 1000 characters (zod for the 400 message, the database check as the last guard). Posting on a photo that does not exist is refused by the foreign key (Postgres 23503) and answered 404, with no "check, then insert"; reading checks the photo first, so "no comments yet" (`[]`) and "no such photo" (404) differ.
 
 ## What I'd do next
 

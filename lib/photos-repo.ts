@@ -46,6 +46,12 @@ export async function createPhoto(p: NewPhoto): Promise<Photo> {
   return rows[0];
 }
 
+// So "no comments yet" ([]) and "no such photo" (404) give different answers.
+export async function photoExists(id: number): Promise<boolean> {
+  const { rowCount } = await pool.query("select 1 from photos where id = $1", [id]);
+  return rowCount === 1;
+}
+
 // Only the server ever needs the storage key, so it has its own query.
 // Returns null when the photo does not exist, so the route can answer 404.
 export async function getStorageKey(id: number): Promise<string | null> {
