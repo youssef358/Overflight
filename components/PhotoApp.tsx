@@ -1,6 +1,7 @@
 "use client";
 import { useState } from "react";
 import { PhotoList } from "@/components/PhotoList";
+import { PhotoMap } from "@/components/PhotoMap";
 import { ThemeSelect } from "@/components/ThemeSelect";
 import { usePhotos } from "@/lib/use-photos";
 
@@ -19,7 +20,7 @@ export function PhotoApp() {
 
       <div className="flex flex-1 flex-col xl:grid xl:min-h-0 xl:grid-cols-[1fr_28rem]">
         <section aria-label="Map" className="h-[45vh] border-b xl:h-auto xl:border-r xl:border-b-0">
-          <div className="flex h-full items-center justify-center bg-surface text-muted">Map</div>
+          <PhotoMap photos={data ?? []} selectedId={selectedId} onSelect={setSelectedId} />
         </section>
 
         <aside className="space-y-3 p-4 xl:overflow-y-auto">

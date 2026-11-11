@@ -62,6 +62,9 @@ Reset the database: `npm run db:reset`. Optional: copy `.env.example` to `.env` 
 - `GET /api/photos` returns every photo at once: fine for hundreds. For 10k and more, the map would ask only for id and position, by map area (see `docs/STRATEGY.md`).
 - One `selectedId` in `PhotoApp` is shared by the list, the map and the side panel: one source of truth, so they cannot disagree about which photo is selected.
 - Colours are CSS variables in `app/globals.css`, each written once as `light-dark(light, dark)`. They follow the operating system unless the theme select in the header forces light or dark. The choice is saved in `localStorage` and applied by a small script in `<head>` before the first paint, so the page never flashes the wrong theme. Trade-off: the choice is remembered per browser, not per account.
+- Map markers are one GPU circle layer (grey), and the selected photo is drawn again by a second layer filtered on its id (bigger, blue). Clicking a marker or a list row selects; selecting flies the map to the photo. Trade-off: photos a few metres apart (DSC00751 and DSC00752 are 4 m apart) overlap until you zoom far in; the list reaches both, clustering would group them.
+- Marker colours are fixed hex values, not theme variables: the OpenStreetMap tiles are light in both themes.
+- Map tiles come from the public OpenStreetMap servers: no key, no account. Their usage policy does not allow heavy traffic, so production would use vector tiles from a provider or self-hosted (see `docs/STRATEGY.md`).
 
 ## What I'd do next
 
