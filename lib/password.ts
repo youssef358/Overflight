@@ -1,5 +1,3 @@
-// Server only. A password is never stored, only "scrypt$<salt>$<hash>".
-// scrypt is slow and memory-hungry on purpose: guessing passwords from a leaked hash is expensive.
 import { randomBytes, scrypt, timingSafeEqual } from "node:crypto";
 import { promisify } from "node:util";
 
