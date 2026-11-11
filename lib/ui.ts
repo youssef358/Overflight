@@ -7,6 +7,7 @@ const button =
 
 export const primaryButton = `${button} bg-accent text-background hover:bg-accent/85`;
 export const secondaryButton = `${button} border bg-background hover:bg-surface`;
+export const dangerButton = `${button} border border-danger text-danger hover:bg-danger-soft`;
 
 export const input =
   "mt-1 block w-full rounded-md border bg-background px-2.5 py-1.5 text-sm shadow-sm outline-none " +

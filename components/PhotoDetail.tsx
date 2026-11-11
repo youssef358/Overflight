@@ -1,15 +1,34 @@
 "use client";
+import { useState } from "react";
 import { Comments } from "@/components/Comments";
 import { formatDate } from "@/lib/format";
 import type { Photo } from "@/lib/photos";
+import { dangerButton } from "@/lib/ui";
 
-type Props = { photo: Photo; onClose: () => void; onCommentAdded: () => void };
+type Props = {
+  photo: Photo;
+  // Only for the uploader's own photos. The API checks it again: this only hides the button.
+  canDelete: boolean;
+  onClose: () => void;
+  onCommentAdded: () => void;
+  onDeleted: () => void;
+};
 
 const SOURCE_LABEL = { exif: "from the photo's GPS", manual: "placed by hand" } as const;
 
 // The side panel for the selected photo: the image, who took it, where and when.
-export function PhotoDetail({ photo, onClose, onCommentAdded }: Props) {
+export function PhotoDetail({ photo, canDelete, onClose, onCommentAdded, onDeleted }: Props) {
   const fileUrl = `/api/photos/${photo.id}/file`;
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+
+  async function deletePhoto() {
+    const comments = photo.commentCount === 1 ? " and its comment" : photo.commentCount ? ` and its ${photo.commentCount} comments` : "";
+    if (!window.confirm(`Delete ${photo.originalName}${comments}? This cannot be undone.`)) return;
+    const res = await fetch(`/api/photos/${photo.id}`, { method: "DELETE" }).catch(() => null);
+    if (res?.status === 204) return onDeleted();
+    const answer = await res?.json().catch(() => null);
+    setDeleteError(answer?.error ?? "Network error, the photo was not deleted.");
+  }
 
   return (
     <article className="space-y-3">
@@ -47,9 +66,17 @@ export function PhotoDetail({ photo, onClose, onCommentAdded }: Props) {
         )}
       </dl>
 
-      <a href={fileUrl} target="_blank" rel="noopener" className="inline-block text-sm text-accent hover:underline">
-        Open full size
-      </a>
+      <div className="flex items-center justify-between gap-3">
+        <a href={fileUrl} target="_blank" rel="noopener" className="text-sm text-accent hover:underline">
+          Open full size
+        </a>
+        {canDelete && (
+          <button type="button" onClick={deletePhoto} className={dangerButton}>
+            Delete photo
+          </button>
+        )}
+      </div>
+      {deleteError && <p role="alert" className="rounded-lg bg-danger-soft p-3 text-sm text-danger">{deleteError}</p>}
 
       <Comments photoId={photo.id} onAdded={onCommentAdded} />
     </article>

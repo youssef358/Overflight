@@ -35,5 +35,10 @@ export function usePhotos() {
     );
   }
 
-  return { data, error, addPhoto, incrementCommentCount };
+  // After a 204 from DELETE: drop it from the list (and so from the map).
+  function removePhoto(photoId: number) {
+    setData((current) => (current ?? []).filter((p) => p.id !== photoId));
+  }
+
+  return { data, error, addPhoto, incrementCommentCount, removePhoto };
 }
