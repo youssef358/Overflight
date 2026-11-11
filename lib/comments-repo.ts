@@ -18,6 +18,22 @@ export async function listComments(photoId: number): Promise<Comment[]> {
   return rows;
 }
 
+// Deletes the comment only if this user wrote it, in one statement: no gap between
+// "is it yours?" and "delete it". photo_id too, so the URL's photo must match.
+export async function deleteOwnComment(photoId: number, commentId: number, userId: number): Promise<boolean> {
+  const { rowCount } = await pool.query(
+    "delete from comments where id = $1 and photo_id = $2 and user_id = $3",
+    [commentId, photoId, userId],
+  );
+  return rowCount === 1;
+}
+
+// After a refused delete: tells "someone else's comment" (403) from "no such comment" (404).
+export async function commentExists(photoId: number, commentId: number): Promise<boolean> {
+  const { rowCount } = await pool.query("select 1 from comments where id = $1 and photo_id = $2", [commentId, photoId]);
+  return rowCount === 1;
+}
+
 // Returns null when the photo does not exist: the foreign key refuses the insert (23503).
 // No "check, then insert", so a photo deleted a moment before is handled too.
 export async function createComment(photoId: number, userId: number, body: string): Promise<Comment | null> {
