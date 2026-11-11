@@ -60,6 +60,8 @@ Reset the database: `npm run db:reset`. Optional: copy `.env.example` to `.env` 
 - `photos.user_id` has no `on delete cascade`: deleting a user must not silently delete the team's photos. Trade-off: before deleting such a user, someone decides what happens to their photos. Comments, on the other hand, are deleted with their photo.
 - The comment count is computed in the query (a subquery per photo, served by the `(photo_id, created_at)` index) instead of stored: it can never be out of date. Trade-off: a little more work per request.
 - `GET /api/photos` returns every photo at once: fine for hundreds. For 10k and more, the map would ask only for id and position, by map area (see `docs/STRATEGY.md`).
+- One `selectedId` in `PhotoApp` is shared by the list, the map and the side panel: one source of truth, so they cannot disagree about which photo is selected.
+- Colours are CSS variables in `app/globals.css`, switched by the operating system's light or dark setting. Trade-off: no in-app theme toggle.
 
 ## What I'd do next
 
