@@ -48,6 +48,8 @@ type Props = {
 export function PhotoMap({ photos, selectedId, onSelect, draft }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<MapLibreMap | null>(null);
+  // The loaded maplibre-gl module, kept to create popups after the map exists.
+  const libRef = useRef<typeof import("maplibre-gl") | null>(null);
   const fittedRef = useRef(false);
   const [ready, setReady] = useState(false);
 
@@ -58,6 +60,27 @@ export function PhotoMap({ photos, selectedId, onSelect, draft }: Props) {
     if (photo) map.flyTo({ center: [photo.lng, photo.lat], zoom: Math.max(map.getZoom(), 15) });
   });
 
+  // The card above the selected marker: the photo and its name, like a maps app. Built with
+  // plain DOM (MapLibre owns the popup); textContent, never HTML, so a file name cannot inject markup.
+  const showCard = useEffectEvent((map: MapLibreMap, id: number) => {
+    const photo = photos.find((p) => p.id === id);
+    if (!photo || !libRef.current) return null;
+    const card = document.createElement("div");
+    card.className = "w-40";
+    const img = document.createElement("img");
+    img.src = `/api/photos/${photo.id}/file`; // same URL as the side panel: one download
+    img.alt = photo.originalName;
+    img.className = "aspect-[3/2] w-40 rounded-md bg-surface object-cover";
+    const name = document.createElement("p");
+    name.textContent = photo.originalName;
+    name.className = "mt-1 truncate text-xs font-medium";
+    card.append(img, name);
+    return new libRef.current.Popup({ anchor: "bottom", offset: 16, closeButton: false, closeOnClick: false, className: "photo-card" })
+      .setLngLat([photo.lng, photo.lat])
+      .setDOMContent(card)
+      .addTo(map);
+  });
+
   // 1. Create the map once. maplibre-gl needs `window`, so it is imported here, in the browser.
   useEffect(() => {
     let map: MapLibreMap | undefined;
@@ -65,6 +88,7 @@ export function PhotoMap({ photos, selectedId, onSelect, draft }: Props) {
 
     import("maplibre-gl").then((maplibregl) => {
       if (cancelled || !containerRef.current) return;
+      libRef.current = maplibregl;
       // MapLibre parses tiles in a Web Worker; `npm install` copies it to public/.
       maplibregl.setWorkerUrl("/maplibre-gl-worker.mjs");
       const m = new maplibregl.Map({ container: containerRef.current, style: OSM_STYLE, center: [2.5, 46.6], zoom: 5 });
@@ -140,7 +164,17 @@ export function PhotoMap({ photos, selectedId, onSelect, draft }: Props) {
     if (selectedId !== null) flyToPhoto(map, selectedId);
   }, [selectedId, ready]);
 
-  // 4. Move the draft pin. Pan only when it is out of view, so typing does not shake the map.
+  // 4. Show the card for the selected photo; the cleanup removes it when the selection changes.
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!ready || !map || selectedId === null) return;
+    const popup = showCard(map, selectedId);
+    return () => {
+      popup?.remove();
+    };
+  }, [selectedId, ready]);
+
+  // 5. Move the draft pin. Pan only when it is out of view, so typing does not shake the map.
   const draftLat = draft?.lat;
   const draftLng = draft?.lng;
   useEffect(() => {
