@@ -45,7 +45,9 @@ export function PhotoApp({ user, onLogout }: { user: User; onLogout: () => void 
   }, []);
 
   return (
-    <div className="flex flex-1 flex-col xl:h-dvh">
+    // From xl the screen is exactly the window's height and only the side panel scrolls.
+    // xl:flex-none: as a flex-1 child of <body>, h-dvh would be ignored and the page would grow instead.
+    <div className="flex flex-1 flex-col xl:h-dvh xl:flex-none">
       <header className="flex items-center justify-between gap-3 border-b px-4 py-3">
         <h1 className="flex items-center gap-2 text-lg font-semibold">
           <svg aria-hidden="true" viewBox="0 0 24 24" fill="currentColor" className="size-6 text-accent">
