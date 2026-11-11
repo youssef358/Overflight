@@ -6,6 +6,7 @@ import { pool } from "@/lib/db";
 import { findSessionUser } from "@/lib/sessions-repo";
 import { POST as login } from "./login/route";
 import { POST as logout } from "./logout/route";
+import { GET as me } from "./me/route";
 import { POST as signup } from "./signup/route";
 
 const email = `auth-${randomUUID()}@example.test`;
@@ -60,11 +61,15 @@ describe("auth routes", () => {
     expect((await call(login, { email: "demo@hylight.test", password: "hylight-demo" })).status).toBe(200);
   });
 
-  it("logs out: deletes the session and clears the cookie", async () => {
+  it("logs out: deletes the session and clears the cookie, so /me answers 401 again", async () => {
     const token = sessionToken(await call(login, { email, password: "long enough" }))!;
+    const whoAmI = () => me(new NextRequest("http://test/api/auth/me", { headers: { cookie: `session=${token}` } }));
+    expect(await (await whoAmI()).json()).toMatchObject({ email });
+
     const res = await call(logout, null, token);
     expect(res.status).toBe(204);
     expect(sessionToken(res)).toBe("");
     expect(await findSessionUser(token)).toBeNull();
+    expect((await whoAmI()).status).toBe(401);
   });
 });

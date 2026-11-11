@@ -1,10 +1,12 @@
 import type { NextRequest } from "next/server";
+import { getSessionUser, unauthorized } from "@/lib/auth";
 import { photoIdSchema } from "@/lib/photos";
 import { getStorageKey } from "@/lib/photos-repo";
 import { readPhotoFile } from "@/lib/storage";
 
-// GET /api/photos/42/file: the JPEG itself, for <img src>.
-export async function GET(_request: NextRequest, ctx: RouteContext<"/api/photos/[id]/file">) {
+// GET /api/photos/42/file: the JPEG itself, for <img src> (the browser sends the cookie).
+export async function GET(request: NextRequest, ctx: RouteContext<"/api/photos/[id]/file">) {
+  if (!(await getSessionUser(request))) return unauthorized();
   const id = photoIdSchema.safeParse((await ctx.params).id);
   if (!id.success) {
     return Response.json({ error: "id must be a positive integer" }, { status: 400 });

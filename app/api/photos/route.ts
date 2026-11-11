@@ -1,23 +1,26 @@
 import { createHash, randomUUID } from "node:crypto";
 import type { NextRequest } from "next/server";
+import { getSessionUser, unauthorized } from "@/lib/auth";
 import { MAX_UPLOAD_BYTES, uploadFieldsSchema } from "@/lib/photos";
 import { createPhoto, listPhotos } from "@/lib/photos-repo";
 import { deletePhotoFile, savePhotoFile } from "@/lib/storage";
-
-// SHORTCUT until login exists: every upload belongs to the seeded demo account.
-const UPLOADER_ID = 1;
 
 function error(status: number, message: string) {
   return Response.json({ error: message }, { status });
 }
 
-// GET /api/photos: every photo, newest first (the team map is shared).
-export async function GET() {
+// GET /api/photos: every photo, newest first (the team map is shared by all logged-in users).
+export async function GET(request: NextRequest) {
+  if (!(await getSessionUser(request))) return unauthorized();
   return Response.json(await listPhotos());
 }
 
 // POST /api/photos (multipart form): file, lat, lng, locationSource.
 export async function POST(request: NextRequest) {
+  // First, before reading anything: who is uploading.
+  const user = await getSessionUser(request);
+  if (!user) return unauthorized();
+
   // Refuse a body that says it is too big before reading it into memory
   // (64 KB of margin for the text fields and the multipart separators).
   if (Number(request.headers.get("content-length")) > MAX_UPLOAD_BYTES + 64 * 1024) {
@@ -51,7 +54,7 @@ export async function POST(request: NextRequest) {
   await savePhotoFile(storageKey, bytes);
   try {
     const photo = await createPhoto({
-      userId: UPLOADER_ID,
+      userId: user.id,
       storageKey,
       sha256: createHash("sha256").update(bytes).digest("hex"),
       originalName: file.name.trim().slice(0, 255) || "photo.jpg",

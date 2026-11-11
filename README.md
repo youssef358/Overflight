@@ -48,6 +48,7 @@ Reset the database: `npm run db:reset`. Optional: copy `.env.example` to `.env` 
 
 | Method | Path | Body / query | Returns |
 |---|---|---|---|
+| GET | `/api/auth/me` | | `200 { id, email }`, `401` not logged in |
 | GET | `/api/photos` | | `200 [photo]`, newest first, with uploader email and comment count |
 | GET | `/api/photos/:id/file` | | `200` JPEG bytes, `400` bad id, `404` unknown photo or missing file |
 | POST | `/api/auth/signup` | `{ email, password }` | `201 { id, email }` + session cookie, `400` bad email or password not 8 to 200 characters, `409` email taken |
@@ -79,6 +80,7 @@ Reset the database: `npm run db:reset`. Optional: copy `.env.example` to `.env` 
 - The upload form reads the photo's GPS in the browser with `exifr` (only the start of the file) and runs the same `resolveLocation` rule as the server, so it always shows the position that will be sent. Typing a coordinate makes the position "manual" and it stays so when another file is chosen; "Use the photo's GPS" switches back. Upload stays disabled until the position is valid. After a 201, the returned photo is added to the list and selected, without reloading the list. Trade-off: the position can only be typed, not yet placed by clicking the map.
 - Passwords are hashed with scrypt from `node:crypto` (no package), with a random salt per password, and compared with `timingSafeEqual`. A session is a random 32-byte token in the cookie; the database keeps only its SHA-256 and an expiry 7 days later. Trade-offs: no rate limit on login, no email verification, and expired session rows are never cleaned up (a scheduled `delete ... where expires_at < now()` would do it).
 - The session cookie is `httpOnly` (page scripts cannot read it), `SameSite=Lax` (not sent with POSTs from other sites) and `Secure` in production. Signup logs the new account in. Login gives the same answer for a wrong password and an unknown email. Logout deletes the session row, so a copied cookie stops working too. Trade-off: signup's 409 still reveals that an email has an account; invitation-only signup would close that.
+- Every photo route checks the session itself (`getSessionUser`) and answers 401 first, before reading the body; the upload's owner comes from the session, never from the request. There is no `proxy.ts`: in Next 16 it would buffer request bodies and cut them at 10 MB, which would corrupt large uploads without an error. All API routes except signup and login answer 401 without a session.
 
 ## What I'd do next
 

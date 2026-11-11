@@ -9,12 +9,17 @@ import { NextRequest } from "next/server";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { pool } from "@/lib/db";
 import type { Photo } from "@/lib/photos";
+import { createSession } from "@/lib/sessions-repo";
 import { GET, POST } from "./route";
 
 const email = `list-${randomUUID()}@example.test`;
 let userId: number;
 let olderId: number;
 let newerId: number;
+let cookie: string; // "session=<token>" of the test user
+
+const listRequest = (headers: Record<string, string> = { cookie }) =>
+  new NextRequest("http://test/api/photos", { headers });
 
 async function insertPhoto(): Promise<number> {
   const { rows } = await pool.query(
@@ -31,6 +36,7 @@ beforeAll(async () => {
     [email],
   );
   userId = rows[0].id;
+  cookie = `session=${await createSession(userId)}`;
   olderId = await insertPhoto();
   newerId = await insertPhoto();
   await pool.query("insert into comments (photo_id, user_id, body) values ($1, $2, 'one'), ($1, $2, 'two')", [olderId, userId]);
@@ -43,8 +49,13 @@ afterAll(async () => {
 });
 
 describe("GET /api/photos", () => {
+  it("answers 401 without a session cookie, or with an unknown one", async () => {
+    expect((await GET(listRequest({}))).status).toBe(401);
+    expect((await GET(listRequest({ cookie: "session=made-up" }))).status).toBe(401);
+  });
+
   it("lists photos newest first, with uploader and comment count", async () => {
-    const res = await GET();
+    const res = await GET(listRequest());
     expect(res.status).toBe(200);
     const photos: Photo[] = await res.json();
     const ids = photos.map((p) => p.id);
@@ -56,7 +67,7 @@ describe("GET /api/photos", () => {
   });
 
   it("returns only the public fields (no storage key, no SHA-256)", async () => {
-    const photos: Photo[] = await (await GET()).json();
+    const photos: Photo[] = await (await GET(listRequest())).json();
     expect(Object.keys(photos[0]).sort()).toEqual([
       "commentCount", "createdAt", "description", "id", "lat", "lng",
       "locationSource", "originalName", "uploaderEmail",
@@ -73,10 +84,12 @@ describe("POST /api/photos", () => {
   const jpeg = (bytes = randomBytes(32)) =>
     new File([Buffer.concat([Buffer.from([0xff, 0xd8, 0xff, 0xe0]), bytes])], "DSC00751.JPG", { type: "image/jpeg" });
 
-  async function upload(fields: Record<string, string | File>, headers?: Record<string, string>) {
+  async function upload(fields: Record<string, string | File>, headers: Record<string, string> = {}) {
     const form = new FormData();
     for (const [name, value] of Object.entries(fields)) form.append(name, value);
-    const res = await POST(new NextRequest("http://test/api/photos", { method: "POST", body: form, headers }));
+    const res = await POST(
+      new NextRequest("http://test/api/photos", { method: "POST", body: form, headers: { cookie, ...headers } }),
+    );
     if (res.status === 201) created.push((await res.clone().json()).id);
     return res;
   }
@@ -92,12 +105,16 @@ describe("POST /api/photos", () => {
     delete process.env.UPLOAD_DIR;
   });
 
-  it("stores the file and answers 201 with the new photo", async () => {
+  it("answers 401 without a session, before reading the body", async () => {
+    expect((await upload({ ...FIELDS, file: jpeg() }, { cookie: "" })).status).toBe(401);
+  });
+
+  it("stores the file and answers 201 with the new photo, uploaded by the logged-in user", async () => {
     const res = await upload({ ...FIELDS, file: jpeg() });
     expect(res.status).toBe(201);
     expect(await res.json()).toMatchObject({
       lat: 48.869498, lng: 6.782213, locationSource: "exif",
-      originalName: "DSC00751.JPG", uploaderEmail: "demo@hylight.test", commentCount: 0,
+      originalName: "DSC00751.JPG", uploaderEmail: email, commentCount: 0,
     });
     expect(await readdir(dir)).toHaveLength(1);
   });

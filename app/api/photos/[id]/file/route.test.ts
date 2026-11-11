@@ -5,6 +5,7 @@ import path from "node:path";
 import { NextRequest } from "next/server";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { pool } from "@/lib/db";
+import { createSession } from "@/lib/sessions-repo";
 import { GET } from "./route";
 
 // Not a real image: the route never decodes the bytes, it only serves them.
@@ -14,6 +15,7 @@ let dir: string;
 let userId: number;
 let photoId: number;
 let missingFileId: number;
+let cookie: string;
 
 async function insertPhoto(storageKey: string): Promise<number> {
   const { rows } = await pool.query(
@@ -24,8 +26,8 @@ async function insertPhoto(storageKey: string): Promise<number> {
   return rows[0].id;
 }
 
-const get = (id: string) =>
-  GET(new NextRequest(`http://test/api/photos/${id}/file`), { params: Promise.resolve({ id }) });
+const get = (id: string, headers: Record<string, string> = { cookie }) =>
+  GET(new NextRequest(`http://test/api/photos/${id}/file`, { headers }), { params: Promise.resolve({ id }) });
 
 beforeAll(async () => {
   dir = await mkdtemp(path.join(tmpdir(), "photos-"));
@@ -35,6 +37,7 @@ beforeAll(async () => {
     [`file-${randomUUID()}@example.test`],
   );
   userId = rows[0].id;
+  cookie = `session=${await createSession(userId)}`;
   const key = `${randomUUID()}.jpg`;
   await writeFile(path.join(dir, key), JPEG_BYTES);
   photoId = await insertPhoto(key);
@@ -50,6 +53,10 @@ afterAll(async () => {
 });
 
 describe("GET /api/photos/:id/file", () => {
+  it("answers 401 without a session, even for a photo that exists", async () => {
+    expect((await get(String(photoId), {})).status).toBe(401);
+  });
+
   it("serves the bytes as a JPEG the browser may cache privately", async () => {
     const res = await get(String(photoId));
     expect(res.status).toBe(200);
