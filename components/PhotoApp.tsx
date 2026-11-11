@@ -1,5 +1,6 @@
 "use client";
 import { useState } from "react";
+import { PhotoDetail } from "@/components/PhotoDetail";
 import { PhotoList } from "@/components/PhotoList";
 import { PhotoMap } from "@/components/PhotoMap";
 import { ThemeSelect } from "@/components/ThemeSelect";
@@ -10,6 +11,8 @@ import { usePhotos } from "@/lib/use-photos";
 export function PhotoApp() {
   const { data, error } = usePhotos();
   const [selectedId, setSelectedId] = useState<number | null>(null);
+  // Looked up, not stored: after a refetch the panel shows the fresh data.
+  const selected = data?.find((p) => p.id === selectedId) ?? null;
 
   return (
     <div className="flex flex-1 flex-col xl:h-dvh">
@@ -31,6 +34,8 @@ export function PhotoApp() {
           )}
           {data === null ? (
             !error && <p className="text-muted">Loading photos…</p>
+          ) : selected ? (
+            <PhotoDetail photo={selected} onClose={() => setSelectedId(null)} />
           ) : (
             <PhotoList photos={data} selectedId={selectedId} onSelect={setSelectedId} />
           )}

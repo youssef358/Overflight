@@ -1,4 +1,5 @@
 "use client";
+import { formatDate } from "@/lib/format";
 import type { Photo } from "@/lib/photos";
 
 type Props = {
@@ -6,8 +7,6 @@ type Props = {
   selectedId: number | null;
   onSelect: (id: number) => void;
 };
-
-const dateFormat = new Intl.DateTimeFormat(undefined, { dateStyle: "medium", timeStyle: "short" });
 
 // One row per photo. Clicking a row selects it; the map and the side panel follow.
 export function PhotoList({ photos, selectedId, onSelect }: Props) {
@@ -29,7 +28,7 @@ export function PhotoList({ photos, selectedId, onSelect }: Props) {
             >
               <span className="block truncate font-medium">{p.originalName}</span>
               <span className="block text-sm text-muted">
-                {p.uploaderEmail} · {dateFormat.format(new Date(p.createdAt))} ·{" "}
+                {p.uploaderEmail} · {formatDate(p.createdAt)} ·{" "}
                 {p.commentCount} {p.commentCount === 1 ? "comment" : "comments"}
               </span>
             </button>

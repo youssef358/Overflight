@@ -67,6 +67,7 @@ Reset the database: `npm run db:reset`. Optional: copy `.env.example` to `.env` 
 - Marker colours are fixed hex values, not theme variables: the OpenStreetMap tiles are light in both themes.
 - Map tiles come from the public OpenStreetMap servers: no key, no account. Their usage policy does not allow heavy traffic, so production would use vector tiles from a provider or self-hosted (see `docs/STRATEGY.md`).
 - Photo files live in `uploads/` (outside `public/`) and are served by a route, so access can require a login. All file access goes through `lib/storage.ts`, which is the one file to rewrite for S3. The browser may cache a file for a year (`private, immutable`): a photo's bytes never change. Trade-off: the route reads the whole file into memory; streaming it would matter for many large downloads at once.
+- Selecting a photo replaces the list with a side panel (image, uploader, date, position and its source), like a maps app; "All photos" goes back. The panel shows the 5 MB original for now: previews come with the AI step, which needs a smaller image anyway.
 
 ## What I'd do next
 
