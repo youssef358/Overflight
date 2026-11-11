@@ -120,5 +120,5 @@ Every decision, with its trade-off: [docs/DECISIONS.md](docs/DECISIONS.md).
 ## How I worked
 
 - Time spent: <about 4 hours>.
-- AI tools: I used <Claude Code / Cursor> for <scaffolding, boilerplate, test cases>. I reviewed and ran everything, and I made the design decisions above myself.
+- AI tools: I used Claude Code. I reviewed and ran everything, and I made the design decisions above myself.
 - Starting point: <"Started from an empty create-next-app" or "Started from my own small starter (Docker Compose + migration runner + map component) that I prepared to save setup time; everything domain-specific was written during the assessment.">
