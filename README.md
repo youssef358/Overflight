@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="docs/banner.png" alt="Photo map: geotagged photos on a shared map, for teams that inspect infrastructure from the air. GPS read from the photo, team comments, AI inspection notes." width="880">
+  <img src="docs/banner.webp" alt="Photo map: geotagged photos on a shared map, for teams that inspect infrastructure. GPS-anchored, photo comments, AI notes." width="880">
 </p>
 
 <p align="center">
