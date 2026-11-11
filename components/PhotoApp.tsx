@@ -13,7 +13,7 @@ import type { User } from "@/lib/users";
 // The whole screen. One selectedId is shared by the list, the map and the side panel.
 // Phone: map on top, list below. From xl: map on the left, list column on the right.
 export function PhotoApp({ user, onLogout }: { user: User; onLogout: () => void }) {
-  const { data, error, addPhoto, incrementCommentCount, removePhoto } = usePhotos();
+  const { data, error, addPhoto, changeCommentCount, removePhoto } = usePhotos();
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [adding, setAdding] = useState(false);
   // Where the photo being uploaded would land, drawn as a pin on the map.
@@ -97,9 +97,11 @@ export function PhotoApp({ user, onLogout }: { user: User; onLogout: () => void 
             <PhotoDetail
               key={selected.id}
               photo={selected}
+              userEmail={user.email}
               canDelete={selected.uploaderEmail === user.email}
               onClose={() => setSelectedId(null)}
-              onCommentAdded={() => incrementCommentCount(selected.id)}
+              onCommentAdded={() => changeCommentCount(selected.id, 1)}
+              onCommentDeleted={() => changeCommentCount(selected.id, -1)}
               onDeleted={() => {
                 removePhoto(selected.id);
                 setSelectedId(null);

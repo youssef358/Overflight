@@ -7,17 +7,19 @@ import { dangerButton } from "@/lib/ui";
 
 type Props = {
   photo: Photo;
+  userEmail: string;
   // Only for the uploader's own photos. The API checks it again: this only hides the button.
   canDelete: boolean;
   onClose: () => void;
   onCommentAdded: () => void;
+  onCommentDeleted: () => void;
   onDeleted: () => void;
 };
 
 const SOURCE_LABEL = { exif: "from the photo's GPS", manual: "placed by hand" } as const;
 
 // The side panel for the selected photo: the image, who took it, where and when.
-export function PhotoDetail({ photo, canDelete, onClose, onCommentAdded, onDeleted }: Props) {
+export function PhotoDetail({ photo, userEmail, canDelete, onClose, onCommentAdded, onCommentDeleted, onDeleted }: Props) {
   const fileUrl = `/api/photos/${photo.id}/file`;
   const [deleteError, setDeleteError] = useState<string | null>(null);
 
@@ -78,7 +80,7 @@ export function PhotoDetail({ photo, canDelete, onClose, onCommentAdded, onDelet
       </div>
       {deleteError && <p role="alert" className="rounded-lg bg-danger-soft p-3 text-sm text-danger">{deleteError}</p>}
 
-      <Comments photoId={photo.id} onAdded={onCommentAdded} />
+      <Comments photoId={photo.id} userEmail={userEmail} onAdded={onCommentAdded} onDeleted={onCommentDeleted} />
     </article>
   );
 }

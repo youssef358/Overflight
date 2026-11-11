@@ -27,5 +27,9 @@ export function useComments(photoId: number) {
     setData((current) => [...(current ?? []), comment]);
   }
 
-  return { data, error, addComment };
+  function removeComment(commentId: number) {
+    setData((current) => (current ?? []).filter((c) => c.id !== commentId));
+  }
+
+  return { data, error, addComment, removeComment };
 }

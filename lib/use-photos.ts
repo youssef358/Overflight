@@ -28,10 +28,10 @@ export function usePhotos() {
     setData((current) => [photo, ...(current ?? [])]);
   }
 
-  // After a new comment: keep the list's "N comments" right without reloading every photo.
-  function incrementCommentCount(photoId: number) {
+  // After a comment is added (+1) or deleted (-1): keep the list's count right without reloading.
+  function changeCommentCount(photoId: number, change: 1 | -1) {
     setData((current) =>
-      (current ?? []).map((p) => (p.id === photoId ? { ...p, commentCount: p.commentCount + 1 } : p)),
+      (current ?? []).map((p) => (p.id === photoId ? { ...p, commentCount: p.commentCount + change } : p)),
     );
   }
 
@@ -40,5 +40,5 @@ export function usePhotos() {
     setData((current) => (current ?? []).filter((p) => p.id !== photoId));
   }
 
-  return { data, error, addPhoto, incrementCommentCount, removePhoto };
+  return { data, error, addPhoto, changeCommentCount, removePhoto };
 }
