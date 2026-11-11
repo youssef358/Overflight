@@ -1,5 +1,5 @@
-import { PhotoApp } from "@/components/PhotoApp";
+import { AuthGate } from "@/components/AuthGate";
 
 export default function Home() {
-  return <PhotoApp />;
+  return <AuthGate />;
 }

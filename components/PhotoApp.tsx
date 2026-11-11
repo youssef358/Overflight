@@ -6,10 +6,11 @@ import { PhotoMap } from "@/components/PhotoMap";
 import { ThemeSelect } from "@/components/ThemeSelect";
 import { UploadForm } from "@/components/UploadForm";
 import { usePhotos } from "@/lib/use-photos";
+import type { User } from "@/lib/users";
 
 // The whole screen. One selectedId is shared by the list, the map and the side panel.
 // Phone: map on top, list below. From xl: map on the left, list column on the right.
-export function PhotoApp() {
+export function PhotoApp({ user, onLogout }: { user: User; onLogout: () => void }) {
   const { data, error, addPhoto } = usePhotos();
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [adding, setAdding] = useState(false);
@@ -20,7 +21,14 @@ export function PhotoApp() {
     <div className="flex flex-1 flex-col xl:h-dvh">
       <header className="flex items-center justify-between gap-3 border-b px-4 py-3">
         <h1 className="text-lg font-semibold">Photo map</h1>
-        <ThemeSelect />
+        <div className="flex items-center gap-3">
+          {/* Hidden on phones: the header has no room for a long email at 375 px. */}
+          <span className="hidden text-sm text-muted sm:inline">{user.email}</span>
+          <button type="button" onClick={onLogout} className="text-sm text-accent hover:underline">
+            Log out
+          </button>
+          <ThemeSelect />
+        </div>
       </header>
 
       <div className="flex flex-1 flex-col xl:grid xl:min-h-0 xl:grid-cols-[1fr_28rem]">

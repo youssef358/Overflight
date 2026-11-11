@@ -1,7 +1,8 @@
 // Server only: every SQL query for users lives here.
 import { pool } from "./db";
+import type { User } from "./users";
 
-export type User = { id: number; email: string };
+export type { User };
 
 // Returns null when the email is already taken. The unique constraint decides, not a
 // "select, then insert": two signups at the same moment cannot both succeed.
