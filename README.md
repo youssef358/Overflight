@@ -1,10 +1,6 @@
 <p align="center">
-  <img src="docs/screenshots/map.jpg" alt="The map with a selected photo: a card above its marker, and the side panel with the image, its position, an AI inspection note and two comments" width="880">
+  <img src="docs/banner.png" alt="Photo map: geotagged photos on a shared map, for teams that inspect infrastructure from the air. GPS read from the photo, team comments, AI inspection notes." width="880">
 </p>
-
-<h1 align="center">Photo map</h1>
-
-<p align="center">Geotagged photos on a shared map, for a team that inspects infrastructure from an airship.</p>
 
 <p align="center">
   <a href="#run-it">Run it</a> · <a href="docs/STRATEGY.md">Production plan</a> · <a href="docs/DECISIONS.md">All decisions</a> · <a href="#what-id-do-next">What I'd do next</a>
@@ -13,6 +9,10 @@
 Upload the photos taken during a flight and they land where they were taken: the **GPS position is read from the photo itself** and shown as a pin before anything is sent, and it can be typed by hand when a photo has none. The whole team sees the same map, opens a photo in one click and **discusses it in comments**. With an Amazon Bedrock key, each new photo also gets a **short inspection note** written by a vision model.
 
 It is a small full-stack app that keeps the important parts in plain sight: **plain SQL** with the rules enforced by the database, **authentication written by hand** with `node:crypto`, and the core rule as **one pure function, written test-first**.
+
+<p align="center">
+  <img src="docs/screenshots/map.jpg" alt="The map with a selected photo: a card above its marker, and the side panel with the image, its position, an AI inspection note and two comments" width="880">
+</p>
 
 ## What you can do
 
