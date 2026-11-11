@@ -78,7 +78,7 @@ Derived, not stored: the comment count (a subquery), the uploader's email (a joi
 
 ### API
 
-Every route except signup and login answers `401` without a session.
+Every route except signup, login and logout answers `401` without a session (logout answers `204` either way).
 
 | Method | Path | Body | Returns |
 |---|---|---|---|
