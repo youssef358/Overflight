@@ -1,51 +1,66 @@
-# Photo map
+<p align="center">
+  <img src="docs/screenshots/map.jpg" alt="The map with a selected photo: a card above its marker, and the side panel with the image, its position, an AI inspection note and two comments" width="880">
+</p>
 
-An internal tool that lets a team upload geotagged photos, see them on a map and comment on them.
+<h1 align="center">Photo map</h1>
 
-How I would build it for production (technology choices, architecture, data flow, deployment, storage trade-offs, 10k photos, time estimate): [docs/STRATEGY.md](docs/STRATEGY.md).
+<p align="center">Geotagged photos on a shared map, for a team that inspects infrastructure from an airship.</p>
+
+<p align="center">
+  <a href="#run-it">Run it</a> · <a href="docs/STRATEGY.md">Production plan</a> · <a href="docs/DECISIONS.md">All decisions</a> · <a href="#what-id-do-next">What I'd do next</a>
+</p>
+
+Upload the photos taken during a flight and they land where they were taken: the **GPS position is read from the photo itself** and shown as a pin before anything is sent, and it can be typed by hand when a photo has none. The whole team sees the same map, opens a photo in one click and **discusses it in comments**. With an Amazon Bedrock key, each new photo also gets a **short inspection note** written by a vision model.
+
+It is a small full-stack app that keeps the important parts in plain sight: **plain SQL** with the rules enforced by the database, **authentication written by hand** with `node:crypto`, and the core rule as **one pure function, written test-first**.
+
+## What you can do
+
+- **Add a photo.** Pick a JPEG and its GPS position appears as a pin on the map. No GPS, or 0,0? Type the position. The same file cannot be uploaded twice.
+- **Find it on the map or in the list.** Selecting a photo flies the map to it, shows a card above its marker and opens the side panel: the image, who uploaded it and when, where it was taken (from its GPS or by hand) and the AI note.
+- **Talk about it.** Comment on any photo. Delete your own photos and comments, never someone else's.
+- **Use it anywhere.** Light, dark or system theme. Map and panel side by side on a wide screen, stacked on a phone.
+
+<p align="center">
+  <img src="docs/screenshots/upload-dark.jpg" alt="Adding a photo in dark mode: a preview of the chosen file, its position read from GPS, and a hollow pin on the map where it will land" width="66%">
+  &nbsp;
+  <img src="docs/screenshots/phone-dark.jpg" alt="The phone layout in dark mode: the map on top, the photo list below with GPS badges and comment counts" width="28%">
+</p>
 
 ## Run it
 
-Requirements: Node 20+ (tested on 24), Docker Desktop running.
+You need Node 20 or newer, and Docker Desktop running.
 
-```bash
-npm install        # also copies the MapLibre worker into public/
-npm run setup      # starts PostgreSQL (port 15432), runs migrations, loads demo data
-npm run dev        # http://localhost:3000
+```sh
+npm install      # also copies the MapLibre worker into public/
+npm run setup    # starts PostgreSQL on port 15432, runs the migrations, adds the demo account
+npm run dev      # http://localhost:3000
 ```
 
-Log in with the demo account `demo@hylight.test` / `hylight-demo` (created by `db/seed.sql`), or create an account. The database starts without photos: upload the geotagged photos provided with the brief.
+Log in as `demo@hylight.test` / `hylight-demo`, or create an account. The database starts empty: upload the geotagged photos provided with the brief.
 
-Tests (need the database from `npm run setup`):
-
-```bash
-npm test
+```sh
+npm run check    # type check, lint and tests (the tests use the database from npm run setup)
+npm run db:reset # start again from an empty database
 ```
 
-Reset the database: `npm run db:reset`. Optional: copy `.env.example` to `.env` to point at another database.
-
-Optional AI descriptions: copy `.env.example` to `.env` and set `AWS_BEARER_TOKEN_BEDROCK` to an Amazon Bedrock API key (and `BEDROCK_MODEL_ID` to a vision model the key can use), then restart `npm run dev`. Without a key the feature is off and uploads work the same.
-
-## What it does
-
-- **Accounts.** Sign up or log in; every photo and comment needs an account. The map is shared by the whole team.
-- **Add a photo.** Pick a JPEG: its GPS position is read from the photo and shown as a pin on the map before anything is sent. A photo without GPS (or with 0,0) gets a typed position. The same file cannot be uploaded twice.
-- **See the photos.** Every photo is a grey circle on the map and a row in the list, with a "GPS" or "Placed by hand" badge and its comment count. Selecting one, on the map or in the list, flies the map to it, shows a small card above the marker and opens the side panel: the image, uploader, date, position and, when the AI is on, a short inspection note ("Description (AI)").
-- **Comment** on any photo; **delete** your own photos and your own comments.
-- **Light, dark or system theme**, on a phone (map on top, panel below) or a wide screen (map left, panel right). Escape closes the panel.
+> [!NOTE]
+> The AI note is optional and off by default. To turn it on, copy `.env.example` to `.env` in the folder you run the app from, set `AWS_BEARER_TOKEN_BEDROCK` to an Amazon Bedrock API key (and `BEDROCK_MODEL_ID` to a vision model your key can use), then restart `npm run dev`. Without a key, uploads work the same, without a note.
 
 ## How it's built
 
-| Layer | Choice | Why |
-|---|---|---|
-| UI | Next.js (App Router), React, TypeScript, Tailwind | One project for UI and API, types shared end to end |
-| API | Next.js route handlers under `app/api`, validated with zod | REST, thin handlers, all SQL in `lib/*-repo.ts` |
-| Database | PostgreSQL 17 in Docker, plain SQL migrations in `db/migrations` | Constraints in the database (`check`, `unique`, foreign keys), no ORM to hide the SQL |
-| Map | MapLibre GL + OpenStreetMap tiles, GeoJSON | Open source, no API key |
-| Auth | Email and password (scrypt from `node:crypto`), sessions in the database, httpOnly cookie | No package hiding the security code; every line can be read |
-| Photos | Files in `uploads/` behind `lib/storage.ts`, GPS read in the browser with `exifr` | One file to rewrite for S3; the user sees the position before uploading |
-| AI (optional) | Amazon Bedrock Converse API, plain `fetch` | No SDK; off without a key |
-| Tests | Vitest: pure functions + route handlers called directly | Fast, no server needed |
+**Next.js 16** (App Router, React, TypeScript, Tailwind) serves the page and a small REST API. Every route checks the session itself and validates its input with **zod**, and all SQL lives in `lib/*-repo.ts`. **PostgreSQL 17** runs in Docker with plain SQL migrations, no ORM. The map is **MapLibre** on OpenStreetMap tiles. The tests use **Vitest** and call the route handlers directly, against the real database.
+
+```
+app/api/            the REST routes: auth, photos, photo files, comments
+components/         PhotoApp (the screen), PhotoMap, PhotoList, PhotoDetail, UploadForm, Comments, LoginForm
+lib/location.ts     the core rule: one valid position per photo, from its GPS or typed by hand
+lib/*-repo.ts       every SQL query, one file per table
+lib/storage.ts      the only code that knows where photo files live (the one file to swap for S3)
+lib/ai.ts           the optional Bedrock call
+db/migrations/      the schema, with its checks and constraints
+docs/               the production plan, every decision, the screenshots
+```
 
 ### Data model
 
@@ -63,68 +78,43 @@ Derived, not stored: the comment count (a subquery), the uploader's email (a joi
 
 ### API
 
-| Method | Path | Body / query | Returns |
-|---|---|---|---|
 Every route except signup and login answers `401` without a session.
 
-| Method | Path | Body / query | Returns |
+| Method | Path | Body | Returns |
 |---|---|---|---|
-| POST | `/api/auth/signup` | `{ email, password }` | `201 { id, email }` + session cookie, `400` bad email or password not 8 to 200 characters, `409` email taken |
-| POST | `/api/auth/login` | `{ email, password }` | `200 { id, email }` + session cookie, `400`, `401` same answer for a wrong password and an unknown email |
-| POST | `/api/auth/logout` | | `204`, session deleted, cookie cleared |
-| GET | `/api/auth/me` | | `200 { id, email }`, `401` not logged in |
-| GET | `/api/photos` | | `200 [photo]`, newest first, with uploader email and comment count |
-| POST | `/api/photos` | multipart: `file`, `lat`, `lng`, `locationSource`, optional `preview` (small copy for the AI) | `201 photo`, `400` missing file or bad fields, `409` same file already uploaded, `413` over 15 MB, `415` not a JPEG |
-| GET | `/api/photos/:id/file` | | `200` JPEG bytes, `400` bad id, `404` unknown photo or missing file |
-| DELETE | `/api/photos/:id` | | `204` (photo, its comments and its file deleted), `400` bad id, `403` not the uploader, `404` unknown photo |
-| GET | `/api/photos/:id/comments` | | `200 [comment]` oldest first, `400` bad id, `404` unknown photo |
-| POST | `/api/photos/:id/comments` | `{ body }` | `201 comment` (author from the session), `400` empty or over 1000 characters, `404` unknown photo |
-| DELETE | `/api/photos/:id/comments/:commentId` | | `204`, `400` bad ids, `403` not the author, `404` unknown comment or not on this photo |
+| POST | `/api/auth/signup` | `{ email, password }` | `201` + session cookie, `400`, `409` email taken |
+| POST | `/api/auth/login` | `{ email, password }` | `200` + session cookie, `400`, `401` (same answer for a wrong password and an unknown email) |
+| POST | `/api/auth/logout` | | `204`, session deleted |
+| GET | `/api/auth/me` | | `200 { id, email }` |
+| GET | `/api/photos` | | `200`, newest first, with uploader and comment count |
+| POST | `/api/photos` | multipart: `file`, `lat`, `lng`, `locationSource`, optional `preview` | `201`, `400`, `409` same file, `413` over 15 MB, `415` not a JPEG |
+| GET | `/api/photos/:id/file` | | `200` JPEG, `400`, `404` |
+| DELETE | `/api/photos/:id` | | `204` with its comments and file, `400`, `403` not yours, `404` |
+| GET | `/api/photos/:id/comments` | | `200`, oldest first, `400`, `404` |
+| POST | `/api/photos/:id/comments` | `{ body }` | `201`, `400` empty or over 1000 characters, `404` |
+| DELETE | `/api/photos/:id/comments/:commentId` | | `204`, `400`, `403` not yours, `404` |
 
-## Decisions and trade-offs
+## Key decisions
 
-- Rules live in the database (`check`, `unique`, foreign keys) as well as in the API (zod): zod gives clear 400 messages, and the database still holds if a script or a future endpoint skips zod. Trade-off: each rule is written twice.
-- Rewrote `001_init.sql` instead of adding a migration that drops the demo tables: nothing was deployed, so there was no history to keep. Trade-off: an existing local database needs `npm run db:reset`.
-- Sessions store only the SHA-256 of the cookie token: someone who reads the database cannot reuse a live session.
-- 0,0 counts as "no position": devices write it when they had no GPS fix. Trade-off: a real photo taken at exactly 0,0 (Gulf of Guinea) cannot be stored.
-- Duplicate files are rejected by a unique SHA-256 of their bytes (409). Trade-off: only byte-identical copies are caught, not a resized or re-saved photo.
-- `photos.user_id` has no `on delete cascade`: deleting a user must not silently delete the team's photos. Trade-off: before deleting such a user, someone decides what happens to their photos. Comments, on the other hand, are deleted with their photo.
-- The comment count is computed in the query (a subquery per photo, served by the `(photo_id, created_at)` index) instead of stored: it can never be out of date. Trade-off: a little more work per request.
-- `GET /api/photos` returns every photo at once: fine for hundreds. For 10k and more, the map would ask only for id and position, by map area (see `docs/STRATEGY.md`).
-- One `selectedId` in `PhotoApp` is shared by the list, the map and the side panel: one source of truth, so they cannot disagree about which photo is selected.
-- Colours are CSS variables in `app/globals.css`, each written once as `light-dark(light, dark)`. They follow the operating system unless the theme select in the header forces light or dark. The choice is saved in `localStorage` and applied by a small script in `<head>` before the first paint, so the page never flashes the wrong theme. Trade-off: the choice is remembered per browser, not per account.
-- Map markers are one GPU circle layer (grey), and the selected photo is drawn again by a second layer filtered on its id (bigger, blue). Clicking a marker or a list row selects; selecting flies the map to the photo. Trade-off: photos a few metres apart (DSC00751 and DSC00752 are 4 m apart) overlap until you zoom far in; the list reaches both, clustering would group them.
-- Marker colours are fixed hex values, not theme variables: the OpenStreetMap tiles are light in both themes.
-- Map tiles come from the public OpenStreetMap servers: no key, no account. Their usage policy does not allow heavy traffic, so production would use vector tiles from a provider or self-hosted (see `docs/STRATEGY.md`).
-- Photo files live in `uploads/` (outside `public/`) and are served by a route, so access can require a login. All file access goes through `lib/storage.ts`, which is the one file to rewrite for S3. The browser may cache a file for a year (`private, immutable`): a photo's bytes never change. Trade-off: the route reads the whole file into memory; streaming it would matter for many large downloads at once.
-- Selecting a photo replaces the list with a side panel (image, uploader, date, position and its source), like a maps app; "All photos" goes back. Trade-off: the panel and the map card show the 5 MB original (downloaded once, then cached); stored previews are the first item in "What I'd do next".
-- The core rule is one pure function, `resolveLocation` in `lib/location.ts`, written test-first: a position placed by hand wins over the photo's GPS; GPS that is missing, out of range, not a number or 0,0 counts as no GPS; with neither, the upload is refused. The browser runs it to pre-fill the form, the server re-checks the same `isValidPosition`, and the database checks it a third time. Trade-off: the position is user input, so the server cannot prove a position marked `exif` really came from the camera.
-- Upload form fields arrive as strings, or null when missing. Each coordinate must be a non-empty string before it becomes a number, because `Number(null)` and `Number("")` are 0: a missing latitude would otherwise become a real one.
-- A new photo is inserted and read back (with the uploader's email) in one SQL statement (`with ... insert ... returning`), so the API answers with the same shape as the list.
-- Upload checks, cheapest first: a declared body over the limit is refused before it is read (413), then the file must be present (400), at most 15 MB (413), the fields valid (400), and the bytes must start like a JPEG (`FF D8 FF`, 415). The file name and the type the browser claims are never trusted. Then the file is written, then the row inserted; if the insert fails (for example a duplicate, 409), the file is deleted, so no orphan file stays on disk.
-- The upload form reads the photo's GPS in the browser with `exifr` (only the start of the file) and runs the same `resolveLocation` rule as the server, so it always shows the position that will be sent. Typing a coordinate makes the position "manual" and it stays so when another file is chosen; "Use the photo's GPS" switches back. Upload stays disabled until the position is valid. After a 201, the returned photo is added to the list and selected, without reloading the list. Trade-off: the position can only be typed, not yet placed by clicking the map.
-- While uploading, the form shows a preview of the chosen file (a local `blob:` URL, nothing sent yet) and the map shows a hollow pin where the photo would land, moving as the position changes. The map pans only when the pin is out of view, so typing does not shake it.
-- The selected photo also gets a small card on the map (image and name), like a maps app. It uses the same image URL as the side panel, so the browser downloads it once, and the name is set as text, never HTML. MapLibre draws popups white, so `app/globals.css` gives this one the theme colours.
-- AI description (optional): on upload, the browser also sends a 1024 px JPEG copy (Bedrock refuses images over about 3.75 MB; the originals are 4 to 5 MB) and the server asks a Bedrock vision model, through the Converse API with plain `fetch`, for a one or two sentence description, stored in `photos.description` and shown as "Description (AI)". Off without `AWS_BEARER_TOKEN_BEDROCK`. A failed or slow call (20 s cap) never blocks the upload, it only leaves the description empty. Trade-off: the upload waits for the model; in production a queue and a worker would do it after the upload answers (see `docs/STRATEGY.md`).
-- Only the uploader can delete a photo. The ownership check is part of the delete itself (`delete ... where id = $1 and user_id = $2`), so there is no gap between checking and deleting; when nothing was deleted, one more query tells 403 (someone else's) from 404. Comments go with the photo (cascade). The row is deleted before the file, the reverse of the upload, so the map never shows a photo whose image is gone. Trade-off: no admin role and no undo. In the UI, "Delete photo" only shows on your own photos (the API still checks) and asks for confirmation, naming how many comments go with it.
-- Only a comment's author can delete it, not the photo's owner: moderation rules would need their own decisions. Same pattern as photos: the check is inside the delete (`where id = $1 and photo_id = $2 and user_id = $3`), and the photo id must match, so a comment cannot be deleted through another photo's URL.
-- Passwords are hashed with scrypt from `node:crypto` (no package), with a random salt per password, and compared with `timingSafeEqual`. A session is a random 32-byte token in the cookie; the database keeps only its SHA-256 and an expiry 7 days later. Trade-offs: no rate limit on login, no email verification, and expired session rows are never cleaned up (a scheduled `delete ... where expires_at < now()` would do it).
-- The session cookie is `httpOnly` (page scripts cannot read it), `SameSite=Lax` (not sent with POSTs from other sites) and `Secure` in production. Signup logs the new account in. Login gives the same answer for a wrong password and an unknown email. Logout deletes the session row, so a copied cookie stops working too. Trade-off: signup's 409 still reveals that an email has an account; invitation-only signup would close that.
-- Every photo route checks the session itself (`getSessionUser`) and answers 401 first, before reading the body; the upload's owner comes from the session, never from the request. There is no `proxy.ts`: in Next 16 it would buffer request bodies and cut them at 10 MB, which would corrupt large uploads without an error. All API routes except signup and login answer 401 without a session.
-- The page is the same static shell for everyone and holds no data. `AuthGate` asks `GET /api/auth/me` on load and shows the login form (one form, "Log in" or "Create account") or the app. I chose this over a server-side redirect: with `cacheComponents` on, reading cookies in a page needs a `<Suspense>` boundary and a redirect inside a streamed page. Trade-off: a short "Loading…" before the form or the app, and a session that expires while the app is open shows an error instead of the login form.
-- Comments: the author always comes from the session. The body is trimmed and must be 1 to 1000 characters (zod for the 400 message, the database check as the last guard). Posting on a photo that does not exist is refused by the foreign key (Postgres 23503) and answered 404, with no "check, then insert"; reading checks the photo first, so "no comments yet" (`[]`) and "no such photo" (404) differ.
-- In the side panel, the thread loads per photo and a new comment is added from the POST answer; the list's "N comments" is incremented locally instead of reloading every photo. Comments are rendered as text, so `<script>` in a comment shows as text and never runs. The panel is keyed by photo id, so switching photos never shows the previous photo's thread.
-- On phones the side panel sits under the map, so opening a photo or the upload form scrolls it into view. Escape closes the form or the panel, except while typing in a field, so a half-written comment is not lost.
-- Shared class names for buttons, inputs and cards live in `lib/ui.ts` (plain strings, no component library), so every form looks the same and uses the theme colours. Trade-off: no design system, which would be the next step for a bigger app.
+1. **The rules live in the database too.** Positions in range and not 0,0, lowercase emails, trimmed comments, one row per file: zod gives the user a clear 400, and the `check` and `unique` constraints still hold if a future script or endpoint skips zod.
+2. **The core rule is one pure function.** `resolveLocation` decides where a photo goes: a position typed by hand wins, otherwise the photo's GPS, and missing, out-of-range or 0,0 GPS counts as none. The browser runs it to pre-fill the form, the server checks the same rule again.
+3. **Ownership is checked inside the SQL.** Deletes run `where id = $1 and user_id = $2`, so there is no gap between "is it yours?" and "delete it".
+4. **Uploads are never trusted.** Cheapest checks first: size before reading the body, then the fields, then the JPEG signature in the bytes, never the file name. The file is written before the row and deleted if the insert fails, so the map never points at a missing image.
+5. **Authentication stays small and readable.** scrypt with a random salt, a random session token whose SHA-256 is the only thing stored, an `httpOnly` `SameSite=Lax` cookie, and the same answer for a wrong password and an unknown email.
+6. **No middleware.** In Next 16, `proxy.ts` would buffer every request body and cut it at 10 MB, which would corrupt large uploads without an error, so each route checks the session itself.
+7. **The map draws on the GPU.** All photos are one circle layer and the selected one a second layer on top: one draw call for 10k points, where 10k HTML markers would freeze the page.
+8. **The AI is a bonus, never a blocker.** Off without a key, capped at 20 seconds, and a failed call only leaves the note empty. In production it would move to a background worker.
+
+Every decision, with its trade-off: [docs/DECISIONS.md](docs/DECISIONS.md).
 
 ## What I'd do next
 
 1. **Previews made on the server at upload** (a small and a medium JPEG), used by the list, the side panel, the map card and the AI, instead of the 5 MB original everywhere.
-2. **Edit a photo's position** (and regenerate its AI description) instead of deleting and re-uploading it; placing a photo by clicking on the map.
-3. **Map at scale**: clustering for 10k photos and for close neighbours, loading photos by map area with PostGIS, vector tiles, a tooltip with the name on hover.
-4. **Production storage and AI**: S3 with presigned uploads and CloudFront; the AI description in a background worker, so the upload answers at once.
-5. **Accounts**: company SSO instead of passwords; until then a rate limit on login, email verification and a cleanup of expired sessions.
-6. **Moderation and duplicates**: let a photo's owner or an admin remove comments; catch near-duplicates (a resized or re-saved photo) with a perceptual hash.
+2. **Edit a photo's position** (and regenerate its AI note) instead of deleting and re-uploading it; place a photo by clicking on the map.
+3. **The map at scale**: clustering for 10k photos and for close neighbours, loading photos by map area with PostGIS, vector tiles, a tooltip with the name on hover.
+4. **Production storage and AI**: S3 with presigned uploads and CloudFront, and the AI note in a background worker so the upload answers at once.
+5. **Accounts**: company SSO instead of passwords; until then, a rate limit on login, email verification and a cleanup of expired sessions.
+6. **Moderation and duplicates**: let a photo's owner or an admin remove comments, and catch near-duplicates (a resized or re-saved photo) with a perceptual hash.
 7. **End-to-end tests in a browser** (Playwright) for upload, comment and delete, run in CI.
 
 ## How I worked
