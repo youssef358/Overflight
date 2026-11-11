@@ -1,6 +1,6 @@
 // Server only: the one module that knows where photo files live.
 // Moving to S3 means rewriting these functions, nothing else.
-import { readFile } from "node:fs/promises";
+import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
 
 // Read on every call, not once at import, so tests can point it at a temporary folder.
@@ -13,6 +13,17 @@ function uploadDir(): string {
 function filePath(storageKey: string): string {
   if (path.basename(storageKey) !== storageKey) throw new Error(`invalid storage key: ${storageKey}`);
   return path.join(uploadDir(), storageKey);
+}
+
+// flag "wx": fail instead of overwriting if a file with this key already exists.
+export async function savePhotoFile(storageKey: string, bytes: Uint8Array): Promise<void> {
+  await mkdir(uploadDir(), { recursive: true });
+  await writeFile(filePath(storageKey), bytes, { flag: "wx" });
+}
+
+// force: no error if the file is already gone.
+export async function deletePhotoFile(storageKey: string): Promise<void> {
+  await rm(filePath(storageKey), { force: true });
 }
 
 // Returns null when the file is not on disk.

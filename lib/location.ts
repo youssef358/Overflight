@@ -1,6 +1,9 @@
 // The core rule: every photo gets exactly one valid position. Pure functions,
 // shared by the upload form (browser) and the upload route (server).
-import type { LocationSource } from "./photos";
+
+// 'exif': read from the photo's GPS; 'manual': placed by the user.
+export const LOCATION_SOURCES = ["exif", "manual"] as const;
+export type LocationSource = (typeof LOCATION_SOURCES)[number];
 
 // What exifr reads from a photo's EXIF metadata (signed decimal degrees).
 export type GpsTags = { latitude?: number; longitude?: number };
