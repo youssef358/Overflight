@@ -68,6 +68,7 @@ Reset the database: `npm run db:reset`. Optional: copy `.env.example` to `.env` 
 - Map tiles come from the public OpenStreetMap servers: no key, no account. Their usage policy does not allow heavy traffic, so production would use vector tiles from a provider or self-hosted (see `docs/STRATEGY.md`).
 - Photo files live in `uploads/` (outside `public/`) and are served by a route, so access can require a login. All file access goes through `lib/storage.ts`, which is the one file to rewrite for S3. The browser may cache a file for a year (`private, immutable`): a photo's bytes never change. Trade-off: the route reads the whole file into memory; streaming it would matter for many large downloads at once.
 - Selecting a photo replaces the list with a side panel (image, uploader, date, position and its source), like a maps app; "All photos" goes back. The panel shows the 5 MB original for now: previews come with the AI step, which needs a smaller image anyway.
+- The core rule is one pure function, `resolveLocation` in `lib/location.ts`, written test-first: a position placed by hand wins over the photo's GPS; GPS that is missing, out of range, not a number or 0,0 counts as no GPS; with neither, the upload is refused. The browser runs it to pre-fill the form, the server re-checks the same `isValidPosition`, and the database checks it a third time. Trade-off: the position is user input, so the server cannot prove a position marked `exif` really came from the camera.
 
 ## What I'd do next
 
